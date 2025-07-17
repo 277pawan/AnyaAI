@@ -1,63 +1,49 @@
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  Image,
-  Button,
-  TouchableOpacity,
-  TouchableHighlight,
-  Alert,
-  SafeAreaView,
-  Pressable,
-  useColorScheme,
-  View,
-} from 'react-native';
-const App: React.FC = () => {
-  const theme = useColorScheme();
-  const isDarkMode = theme === 'dark';
-  const backgroundColor = isDarkMode ? 'black' : 'white';
-  const textColor = isDarkMode ? 'white' : 'black';
+import { StyleSheet } from 'react-native';
+import HomeScreen from './src/screens/homeScreen';
+import Explore from './src/screens/explore';
+import Settings from './src/screens/settings';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+const Stack = createNativeStackNavigator();
+
+const StackNavigator = () => {
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: backgroundColor }]}
-    >
-      <Text style={{ color: textColor }}>Welcome to AnyaAI!</Text>;
-      {/* <Image */}
-      {/*   source={{ */}
-      {/*     uri: 'https://images.pexels.com/photos/28949655/pexels-photo-28949655.jpeg', */}
-      {/*   }} */}
-      {/*   style={{ height: 500, width: 400 }} */}
-      {/* /> */}
-      <Button title="Press Me"></Button>
-      <TouchableOpacity
-        style={{ backgroundColor: 'red' }}
-        onPress={() => Alert.alert('Buttons is pressed')}
-      >
-        <Text>Button</Text>
-      </TouchableOpacity>
-      <View>
-        <Text style={{ color: textColor }}>
-          {' '}
-          This is just for testing purpose.
-        </Text>
-      </View>
-      <TouchableHighlight style={{ backgroundColor: 'green' }}>
-        <Text>Button</Text>
-      </TouchableHighlight>
-      <Pressable style={{ padding: 10, backgroundColor: 'yellow' }}>
-        <Text>Pressable Button</Text>
-      </Pressable>
-    </SafeAreaView>
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="Explore" component={Explore} />
+      <Stack.Screen name="Settings" component={Settings} />
+    </Stack.Navigator>
+  );
+};
+
+const App = () => {
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StackNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    gap: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'lightgreen',
+    backgroundColor: '#f2f2f2',
+  },
+  text: {
+    fontSize: 20,
+    color: '#333',
   },
 });
+
 export default App;
