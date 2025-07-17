@@ -1,3 +1,4 @@
+import { Navigation } from 'lucide-react-native';
 import React from 'react';
 import {
   StyleSheet,
@@ -12,10 +13,8 @@ import {
   TouchableWithoutFeedback,
   StatusBar,
 } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import Feather from 'react-native-vector-icons/Feather';
 
-const HomeScreen: React.FC = () => {
+const HomeScreen: React.FC = ({ navigation }: any) => {
   const theme = useColorScheme();
   const isDarkMode = theme === 'dark';
   const backgroundColor = isDarkMode ? '#000000' : '#ffffff';
@@ -57,27 +56,24 @@ const HomeScreen: React.FC = () => {
   const quickActions = [
     {
       id: 'lights',
-      icon: MaterialCommunityIcons,
-      iconName: 'lightbulb-group-outline',
+      icon: '💡',
       label: 'Lights',
-      action: () => console.log('Lights pressed'),
+      action: () => navigation.navigate('Explore'),
     },
     {
       id: 'music',
-      icon: MaterialCommunityIcons,
-      iconName: 'music',
+      icon: '🎼',
       label: 'Music',
       action: () => console.log('Music pressed'),
     },
     {
       id: 'command',
-      icon: MaterialCommunityIcons,
-      iconName: 'code-tags',
+      icon: '⚡',
       label: 'Command',
       action: () => console.log('Command pressed'),
     },
   ];
-  uu;
+
   const renderHistoryItem = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -93,13 +89,13 @@ const HomeScreen: React.FC = () => {
       <View style={styles.historyHeader}>
         <View style={styles.statusContainer}>
           {item.status === 'Success' ? (
-            <MaterialCommunityIcons name="check" size={16} color="#10b981" />
+            <View style={styles.successIcon}>
+              <Text style={styles.iconText}>✓</Text>
+            </View>
           ) : (
-            <MaterialCommunityIcons
-              name="close-circle"
-              size={16}
-              color="#ef4444"
-            />
+            <View style={styles.failIcon}>
+              <Text style={styles.iconText}>✗</Text>
+            </View>
           )}
           <Text
             style={[
@@ -111,7 +107,7 @@ const HomeScreen: React.FC = () => {
           </Text>
         </View>
         <View style={styles.timestampContainer}>
-          <Feather name="clock" size={12} color="#6b7280" />
+          <Text style={styles.clockIcon}>🕐</Text>
           <Text style={styles.timestamp}>{item.timestamp}</Text>
         </View>
       </View>
@@ -134,7 +130,7 @@ const HomeScreen: React.FC = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <MaterialCommunityIcons name="robot" size={60} color="#2563eb" />
+          <Text style={styles.robotIcon}>🤖</Text>
         </View>
         <Text style={[styles.appTitle, { color: textColor }]}>
           Anya AI Assistant
@@ -176,7 +172,7 @@ const HomeScreen: React.FC = () => {
               onPress={action.action}
               activeOpacity={0.8}
             >
-              <action.icon name={action.iconName} size={24} color="white" />
+              <Text style={styles.actionIcon}>{action.icon}</Text>
               <Text style={styles.actionButtonText}>{action.label}</Text>
             </TouchableOpacity>
           ))}
@@ -209,12 +205,9 @@ const HomeScreen: React.FC = () => {
                   <Text style={[styles.modalTitle, { color: textColor }]}>
                     Command Details
                   </Text>
-                  <Feather
-                    name="copy"
-                    size={20}
-                    color="white"
-                    onPress={() => {}}
-                  />
+                  <TouchableOpacity onPress={() => {}}>
+                    <Text style={styles.copyIcon}>📋</Text>
+                  </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.modalScroll}>
                   <Text style={[styles.modalText, { color: textColor }]}>
@@ -247,6 +240,9 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 15,
+  },
+  robotIcon: {
+    fontSize: 60,
   },
   appTitle: {
     fontSize: 28,
@@ -294,6 +290,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  successIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  failIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   historyStatus: {
     fontSize: 14,
     fontWeight: '500',
@@ -303,10 +320,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  clockIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
   timestamp: {
     fontSize: 12,
     color: '#6b7280',
-    marginLeft: 4,
   },
   historyQuery: {
     fontSize: 15,
@@ -338,11 +358,14 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  actionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
   actionButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
-    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -375,6 +398,9 @@ const styles = StyleSheet.create({
   modalText: {
     fontSize: 16,
     lineHeight: 24,
+  },
+  copyIcon: {
+    fontSize: 20,
   },
   modalCloseButton: {
     backgroundColor: '#2563eb',
