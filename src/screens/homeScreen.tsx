@@ -1,5 +1,5 @@
 import { Navigation } from 'lucide-react-native';
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   StatusBar,
 } from 'react-native';
+import VoiceAssistant from './components/MicWaves/micVisualizer';
 
 const HomeScreen: React.FC = ({ navigation }: any) => {
   const theme = useColorScheme();
@@ -24,6 +25,34 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
 
   const [modalVisible, setModalVisible] = React.useState(false);
   const [selectedQuery, setSelectedQuery] = React.useState('');
+
+  const [isAssistantActive, setIsAssistantActive] = useState(false);
+  const [decibelData, setDecibelData] = useState<number[]>([]);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // Add these callbacks
+  const handleStartListening = useCallback(() => {
+    setIsAssistantActive(true);
+    setDecibelData([]);
+  }, []);
+
+  const handleStopListening = useCallback(
+    (duration: number) => {
+      setIsAssistantActive(false);
+      setRecordingDuration(duration);
+
+      // Here you would typically send the audio data to your backend
+      console.log('Recording stopped after', duration, 'seconds');
+      console.log('Decibel data:', decibelData);
+
+      // You can process the decibel data for visualization or send to backend
+    },
+    [decibelData],
+  );
+
+  const handleDecibelChange = useCallback((db: number) => {
+    setDecibelData(prev => [...prev, db]);
+  }, []);
 
   const historyData = [
     {
@@ -44,12 +73,6 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
       query: 'Open Visual Studio Code',
       status: 'Success',
       timestamp: '1 hour ago',
-    },
-    {
-      id: '4',
-      query: 'Check weather updates for the week',
-      status: 'Success',
-      timestamp: '3 hours ago',
     },
   ];
 
@@ -131,6 +154,15 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <Text style={styles.robotIcon}>🤖</Text>
+
+          <VoiceAssistant
+            onStartListening={() => console.log('Listening started')}
+            onStopListening={(duration, decibels) =>
+              console.log('Stopped. Duration:', duration, 'dB:', decibels)
+            }
+            onDecibelChange={db => console.log('Live dB:', db)}
+            onSpeechResult={text => console.log('Recognized speech:', text)}
+          />
         </View>
         <Text style={[styles.appTitle, { color: textColor }]}>
           Anya AI Assistant
