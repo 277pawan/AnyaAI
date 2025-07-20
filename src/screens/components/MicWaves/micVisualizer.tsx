@@ -29,59 +29,133 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [decibelLevel, setDecibelLevel] = useState(-160);
   const [spokenText, setSpokenText] = useState<string>('');
+  const [isVoiceReady, setIsVoiceReady] = useState<boolean>(false);
+  const [initError, setInitError] = useState<string>('');
   const silenceTimer = useRef<NodeJS.Timeout | null>(null);
   const startTime = useRef<number | null>(null);
   const decibelData = useRef<number[]>([]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const [isVoiceLoaded, setIsVoiceLoaded] = useState(false);
-  console.log(Voice);
-  // Add this useEffect to check Voice module loading
-  useEffect(() => {
-    const checkVoice = async () => {
-      console.log('check voice:- ');
-      try {
-        // Check if Voice module is available
-        console.log(Voice.isAvailable());
-        const isAvailable = await Voice.isAvailable();
-        console.log(isAvailable);
-        setIsVoiceLoaded(isAvailable);
 
-        if (!isAvailable) {
-          console.warn('Voice recognition not available');
+  // Wait for native module to load properly
+  useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const waitForVoiceModule = async () => {
+      const checkVoiceReady = async (): Promise<boolean> => {
+        try {
+          // Check if the module is loaded
+          console.log('Voice module state:', Voice);
+
+          if (!Voice || typeof Voice.isAvailable !== 'function') {
+            throw new Error('Voice module not loaded');
+          }
+
+          // Try to call isAvailable
+          const available = await Voice.isAvailable();
+          return available ? true : false;
+        } catch (error) {
+          console.log(
+            `Voice check attempt ${retryCount + 1} failed:`,
+            error.message,
+          );
+          return false;
         }
-      } catch (error) {
-        console.error('Voice check error:', error);
-        setIsVoiceLoaded(false);
+      };
+
+      while (retryCount < maxRetries && mounted) {
+        try {
+          const isReady = await checkVoiceReady();
+
+          if (isReady) {
+            console.log('Voice module is ready');
+            if (mounted) {
+              setIsVoiceReady(true);
+              setInitError('');
+            }
+            return;
+          }
+        } catch (error) {
+          console.log(`Retry ${retryCount + 1} failed:`, error);
+        }
+
+        retryCount++;
+        // Wait before retry with exponential backoff
+        await new Promise(resolve =>
+          setTimeout(resolve, Math.pow(2, retryCount) * 100),
+        );
+      }
+
+      if (mounted && retryCount >= maxRetries) {
+        setInitError(
+          'Voice module failed to initialize after multiple attempts',
+        );
+        console.error('Voice module initialization failed after retries');
       }
     };
 
-    checkVoice();
+    waitForVoiceModule();
 
     return () => {
-      Voice.destroy().then(() => {
-        Voice.removeAllListeners();
-      });
+      mounted = false;
     };
   }, []);
-  // Setup Voice listeners
+
+  // Setup Voice listeners only after module is ready
   useEffect(() => {
-    Voice.onSpeechResults = (event: any) => {
-      if (event.value && event.value.length > 0) {
-        setSpokenText(event.value[0]);
-        if (onSpeechResult) onSpeechResult(event.value[0]);
+    if (!isVoiceReady) return;
+
+    const setupListeners = () => {
+      try {
+        Voice.onSpeechStart = () => {
+          console.log('Speech start');
+        };
+
+        Voice.onSpeechRecognized = () => {
+          console.log('Speech recognized');
+        };
+
+        Voice.onSpeechEnd = () => {
+          console.log('Speech end');
+        };
+
+        Voice.onSpeechError = (event: any) => {
+          console.error('Voice error:', event.error);
+          setIsListening(false);
+        };
+
+        Voice.onSpeechResults = (event: any) => {
+          console.log('Speech results:', event.value);
+          if (event.value && event.value.length > 0) {
+            setSpokenText(event.value[0]);
+            if (onSpeechResult) onSpeechResult(event.value[0]);
+          }
+        };
+
+        Voice.onSpeechPartialResults = (event: any) => {
+          console.log('Partial results:', event.value);
+        };
+
+        console.log('Voice listeners setup complete');
+      } catch (error) {
+        console.error('Error setting up Voice listeners:', error);
+        setInitError(`Listener setup failed: ${error.message}`);
       }
     };
 
-    Voice.onSpeechError = (event: any) => {
-      console.error('Voice error:', event.error);
-    };
+    setupListeners();
 
     return () => {
-      Voice.destroy().then(() => {
-        Voice.removeAllListeners();
-      });
+      if (Voice && typeof Voice.destroy === 'function') {
+        Voice.destroy()
+          .then(() => {
+            Voice.removeAllListeners();
+          })
+          .catch(console.error);
+      }
     };
-  }, []);
+  }, [isVoiceReady, onSpeechResult]);
 
   // Request mic permissions
   useEffect(() => {
@@ -90,14 +164,6 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
         try {
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            {
-              title: 'Microphone Permission',
-              message:
-                'This app needs access to your microphone for voice commands',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            },
           );
           setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
         } catch (err) {
@@ -116,44 +182,56 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
   useEffect(() => {
     if (!isListening) return;
 
-    SoundLevel.start();
-    SoundLevel.onNewFrame = data => {
-      const db = data.value;
-      setDecibelLevel(db);
-      onDecibelChange(db);
-      decibelData.current.push(db);
+    try {
+      SoundLevel.start();
+      SoundLevel.onNewFrame = data => {
+        const db = data.value;
+        setDecibelLevel(db);
+        onDecibelChange(db);
+        decibelData.current.push(db);
 
-      if (db > -60) {
-        if (silenceTimer.current) clearTimeout(silenceTimer.current);
-        silenceTimer.current = setTimeout(stopListening, 2000);
-      }
-    };
+        if (db > -60) {
+          if (silenceTimer.current) clearTimeout(silenceTimer.current);
+          silenceTimer.current = setTimeout(stopListening, 2000);
+        }
+      };
+    } catch (error) {
+      console.error('SoundLevel error:', error);
+    }
 
     return () => {
-      SoundLevel.stop();
+      try {
+        SoundLevel.stop();
+      } catch (error) {
+        console.error('SoundLevel stop error:', error);
+      }
       if (silenceTimer.current) clearTimeout(silenceTimer.current);
     };
   }, [isListening]);
 
-  // Update your startListening function
   const startListening = async () => {
+    if (!isVoiceReady) {
+      Alert.alert('Error', 'Voice recognition is not ready yet. Please wait.');
+      return;
+    }
+
     if (hasPermission === false) {
       Alert.alert(
         'Permission Required',
         'Please enable microphone permissions in settings',
-        [{ text: 'OK' }],
       );
       return;
     }
 
-    if (hasPermission === null || !isVoiceLoaded) {
-      console.log(hasPermission, isVoiceLoaded);
-      console.log('Waiting for permissions or voice module to load');
+    if (hasPermission === null) {
+      console.log('Waiting for permissions to load');
       return;
     }
 
     try {
       setSpokenText('');
+      console.log('Starting voice recognition...');
+
       await Voice.start('en-US');
       setIsListening(true);
       startTime.current = Date.now();
@@ -164,6 +242,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
       Alert.alert('Error', `Failed to start voice recognition: ${err.message}`);
     }
   };
+
   const stopListening = async () => {
     if (!isListening) return;
 
@@ -198,6 +277,30 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     return 1 + normalized * 0.5;
   };
 
+  // Show error state
+  if (initError) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Voice Error: {initError}</Text>
+        <Text style={styles.debugText}>
+          Try restarting the app or check if device supports speech recognition
+        </Text>
+      </View>
+    );
+  }
+
+  // Show loading state
+  if (!isVoiceReady) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.statusText}>Initializing voice recognition...</Text>
+        <Text style={styles.debugText}>
+          Voice Module: {Voice ? 'Loaded' : 'Not Loaded'}
+        </Text>
+      </View>
+    );
+  }
+
   if (hasPermission === false) {
     return (
       <View style={styles.container}>
@@ -212,7 +315,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     <View style={styles.container}>
       <TouchableOpacity
         onPress={toggleListening}
-        disabled={hasPermission === null}
+        disabled={hasPermission === null || !isVoiceReady}
       >
         <Animated.View
           style={[
@@ -220,7 +323,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
             {
               transform: [{ scale: isListening ? scaleAnim : 1 }],
               backgroundColor: isListening ? '#FF3B30' : '#E0E0E0',
-              opacity: hasPermission === null ? 0.5 : 1,
+              opacity: hasPermission === null || !isVoiceReady ? 0.5 : 1,
             },
           ]}
         >
@@ -239,6 +342,8 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
       <Text style={styles.statusText}>
         {hasPermission === null
           ? 'Checking permissions...'
+          : !isVoiceReady
+          ? 'Initializing voice...'
           : isListening
           ? 'Listening... Speak now'
           : 'Tap to speak'}
@@ -302,6 +407,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     textAlign: 'center',
+  },
+  errorText: {
+    color: '#FF3B30',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  debugText: {
+    color: '#888',
+    textAlign: 'center',
+    fontSize: 12,
+    marginTop: 10,
   },
 });
 
