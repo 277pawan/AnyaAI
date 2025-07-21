@@ -30,6 +30,25 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
   const [decibelData, setDecibelData] = useState<number[]>([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
 
+  const handleStart = () => {
+    console.log('🎙️ Started Listening');
+  };
+
+  const handleStop = (duration: number, audioBuffer: number[]) => {
+    console.log(
+      `🛑 Stopped after ${duration.toFixed(2)} sec`,
+      audioBuffer.length,
+    );
+  };
+
+  const handleDecibel = (db: number) => {
+    console.log(`🔊 Current dB: ${db}`);
+  };
+
+  const handleSpeech = (text: string) => {
+    console.log(`💬 Recognized: ${text}`);
+  };
+
   // Add these callbacks
   const handleStartListening = useCallback(() => {
     setIsAssistantActive(true);
@@ -156,12 +175,10 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
           <Text style={styles.robotIcon}>🤖</Text>
 
           <VoiceAssistant
-            onStartListening={() => console.log('Listening started')}
-            onStopListening={(duration, decibels) =>
-              console.log('Stopped. Duration:', duration, 'dB:', decibels)
-            }
-            onDecibelChange={db => console.log('Live dB:', db)}
-            onSpeechResult={text => console.log('Recognized speech:', text)}
+            onStartListening={handleStart}
+            onStopListening={handleStop}
+            onDecibelChange={handleDecibel}
+            onSpeechResult={handleSpeech}
           />
         </View>
         <Text style={[styles.appTitle, { color: textColor }]}>
