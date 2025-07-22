@@ -52,7 +52,11 @@ const App = () => {
             },
           })}
         >
-          <Tab.Screen name="Home" component={HomeScreen} />
+          <Tab.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ tabBarLabel: 'Home', tabBarShowLabel: true }}
+          />
           <Tab.Screen name="Explore" component={Explore} />
           <Tab.Screen name="Settings" component={Settings} />
         </Tab.Navigator>

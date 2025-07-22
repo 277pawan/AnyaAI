@@ -1,4 +1,3 @@
-import { Navigation } from 'lucide-react-native';
 import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import VoiceAssistant from './components/MicWaves/micVisualizer';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const HomeScreen: React.FC = ({ navigation }: any) => {
   const theme = useColorScheme();
@@ -23,9 +23,8 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
   const cardBackgroundColor = isDarkMode ? '#1a1a1a' : '#f8f9fa';
   const borderColor = isDarkMode ? '#333333' : '#e5e7eb';
 
-  const [modalVisible, setModalVisible] = React.useState(false);
-  const [selectedQuery, setSelectedQuery] = React.useState('');
-
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedQuery, setSelectedQuery] = useState('');
   const [isAssistantActive, setIsAssistantActive] = useState(false);
   const [decibelData, setDecibelData] = useState<number[]>([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -49,7 +48,6 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
     console.log(`💬 Recognized: ${text}`);
   };
 
-  // Add these callbacks
   const handleStartListening = useCallback(() => {
     setIsAssistantActive(true);
     setDecibelData([]);
@@ -59,12 +57,8 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
     (duration: number) => {
       setIsAssistantActive(false);
       setRecordingDuration(duration);
-
-      // Here you would typically send the audio data to your backend
       console.log('Recording stopped after', duration, 'seconds');
       console.log('Decibel data:', decibelData);
-
-      // You can process the decibel data for visualization or send to backend
     },
     [decibelData],
   );
@@ -98,19 +92,19 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
   const quickActions = [
     {
       id: 'lights',
-      icon: '💡',
+      icon: 'lightbulb-on-outline',
       label: 'Lights',
       action: () => navigation.navigate('Explore'),
     },
     {
       id: 'music',
-      icon: '🎼',
+      icon: 'music-circle-outline',
       label: 'Music',
       action: () => console.log('Music pressed'),
     },
     {
       id: 'command',
-      icon: '⚡',
+      icon: 'flash-outline',
       label: 'Command',
       action: () => console.log('Command pressed'),
     },
@@ -130,15 +124,11 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
     >
       <View style={styles.historyHeader}>
         <View style={styles.statusContainer}>
-          {item.status === 'Success' ? (
-            <View style={styles.successIcon}>
-              <Text style={styles.iconText}>✓</Text>
-            </View>
-          ) : (
-            <View style={styles.failIcon}>
-              <Text style={styles.iconText}>✗</Text>
-            </View>
-          )}
+          <MaterialCommunityIcon
+            name={item.status === 'Success' ? 'check-circle' : 'close-circle'}
+            color={item.status === 'Success' ? '#10b981' : '#ef4444'}
+            size={16}
+          />
           <Text
             style={[
               styles.historyStatus,
@@ -149,7 +139,11 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
           </Text>
         </View>
         <View style={styles.timestampContainer}>
-          <Text style={styles.clockIcon}>🕐</Text>
+          <MaterialCommunityIcon
+            name="clock-outline"
+            color="#9ca3af"
+            size={14}
+          />
           <Text style={styles.timestamp}>{item.timestamp}</Text>
         </View>
       </View>
@@ -169,11 +163,10 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
         backgroundColor={backgroundColor}
       />
 
-      {/* Header Section */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Text style={styles.robotIcon}>🤖</Text>
-
+          <MaterialCommunityIcon name="robot" size={60} color={textColor} />
           <VoiceAssistant
             onStartListening={handleStart}
             onStopListening={handleStop}
@@ -194,7 +187,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
         </Text>
       </View>
 
-      {/* History Section */}
+      {/* History */}
       <View style={styles.historySection}>
         <Text style={[styles.sectionTitle, { color: textColor }]}>
           Recent Activity
@@ -221,7 +214,11 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
               onPress={action.action}
               activeOpacity={0.8}
             >
-              <Text style={styles.actionIcon}>{action.icon}</Text>
+              <MaterialCommunityIcon
+                name={action.icon}
+                size={24}
+                color="white"
+              />
               <Text style={styles.actionButtonText}>{action.label}</Text>
             </TouchableOpacity>
           ))}
@@ -237,7 +234,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
       >
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback>
               <View
                 style={[
                   styles.modalContent,
@@ -246,16 +243,21 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
               >
                 <View
                   style={{
-                    flex: 1,
                     flexDirection: 'row',
+                    alignItems: 'center',
                     justifyContent: 'space-between',
                   }}
                 >
                   <Text style={[styles.modalTitle, { color: textColor }]}>
                     Command Details
                   </Text>
-                  <TouchableOpacity onPress={() => {}}>
-                    <Text style={styles.copyIcon}>📋</Text>
+                  <TouchableOpacity onPress={() => {}} style={{ padding: 4 }}>
+                    <MaterialCommunityIcon
+                      name="content-copy"
+                      color={textColor}
+                      size={18}
+                      style={{ marginBottom: 12 }}
+                    />
                   </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.modalScroll}>
@@ -279,52 +281,21 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-  },
-  logoContainer: {
-    marginBottom: 15,
-  },
-  robotIcon: {
-    fontSize: 60,
-  },
-  appTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  appSubtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-  },
-  historySection: {
-    flex: 1,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 15,
-  },
-  historyList: {
-    paddingBottom: 10,
-  },
+  container: { flex: 1 },
+  header: { alignItems: 'center', paddingVertical: 30, paddingHorizontal: 20 },
+  logoContainer: { marginBottom: 15 },
+  appTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 5 },
+  appSubtitle: { fontSize: 16, fontWeight: '400' },
+  historySection: { flex: 1, paddingHorizontal: 20, marginBottom: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: '600', marginBottom: 15 },
+  historyList: { paddingBottom: 10 },
   historyCard: {
     padding: 16,
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
@@ -335,61 +306,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  successIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  failIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  historyStatus: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  timestampContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  clockIcon: {
-    fontSize: 12,
-    marginRight: 4,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  historyQuery: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '400',
-  },
-  quickActionsSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
+  statusContainer: { flexDirection: 'row', alignItems: 'center' },
+  historyStatus: { fontSize: 14, fontWeight: '500', marginLeft: 6 },
+  timestampContainer: { flexDirection: 'row', alignItems: 'center' },
+  timestamp: { fontSize: 12, marginLeft: 4, color: '#6b7280' },
+  historyQuery: { fontSize: 15, lineHeight: 20, fontWeight: '400' },
+  quickActionsSection: { paddingHorizontal: 20, paddingBottom: 30 },
+  quickActionsGrid: { flexDirection: 'row', justifyContent: 'space-around' },
   actionButton: {
     backgroundColor: '#2563eb',
     paddingVertical: 16,
@@ -398,23 +321,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 80,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
     elevation: 5,
-  },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
   },
   actionButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
+    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -427,30 +340,11 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '85%',
     maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
     elevation: 5,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  modalScroll: {
-    maxHeight: 200,
-  },
-  modalText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  copyIcon: {
-    fontSize: 20,
-  },
+  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16 },
+  modalScroll: { maxHeight: 200 },
+  modalText: { fontSize: 16, lineHeight: 24 },
   modalCloseButton: {
     backgroundColor: '#2563eb',
     paddingVertical: 12,
@@ -459,11 +353,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  modalCloseText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  modalCloseText: { color: 'white', fontSize: 16, fontWeight: '500' },
 });
 
 export default HomeScreen;
