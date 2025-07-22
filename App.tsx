@@ -13,7 +13,7 @@ const Tab = createBottomTabNavigator();
 const App = () => {
   const theme = useColorScheme();
   const iconColor = theme === 'dark' ? 'white' : 'black';
-  const bgColor = theme === 'dark' ? 'black' : 'white';
+  const bgColor = theme === 'dark' ? '#0a0a0a' : 'white';
   return (
     <SafeAreaProvider>
       <NavigationContainer>
@@ -58,7 +58,15 @@ const App = () => {
             options={{ tabBarLabel: 'Home', tabBarShowLabel: true }}
           />
           <Tab.Screen name="Explore" component={Explore} />
-          <Tab.Screen name="Settings" component={Settings} />
+          <Tab.Screen
+            name="Settings"
+            component={Settings}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: bgColor },
+              headerTintColor: iconColor,
+            }}
+          />
         </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
