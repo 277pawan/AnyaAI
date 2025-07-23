@@ -12,7 +12,7 @@ import {
   TouchableWithoutFeedback,
   StatusBar,
 } from 'react-native';
-import VoiceAssistant from './components/MicWaves/micVisualizer';
+import VoiceAssistant from './components/micWaves/micVisualizer';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const HomeScreen: React.FC = ({ navigation }: any) => {

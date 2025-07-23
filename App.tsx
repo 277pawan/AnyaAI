@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 import HomeScreen from './src/screens/homeScreen';
 import Explore from './src/screens/explore';
 import Settings from './src/screens/settings';
