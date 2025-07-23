@@ -6,17 +6,25 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Explore = ({ navigation }: any) => {
+  const theme = useColorScheme();
+  const isDarkMode = theme === 'dark';
+  const backgroundColor = isDarkMode ? '#0a0a0a' : '#ffffff';
+  const textColor = isDarkMode ? '#ffffff' : '#000000';
+  const cardBackgroundColor = isDarkMode ? '#1a1a1a' : '#f8f9fa';
+  const borderColor = isDarkMode ? '#333333' : '#e5e7eb';
+
   const smartHome = [
     {
       id: 1,
       content: 'Living Room',
       icon: 'lightbulb-on-outline',
       status: '3 lights on',
-      color: 'yellow',
+      color: '#1ae4ff',
       action: () => console.log('Living Room controls'),
     },
     {
@@ -52,7 +60,7 @@ const Explore = ({ navigation }: any) => {
       icon: 'chat-minus',
       status: 'Ready to talk',
 
-      color: 'yellow',
+      color: '#00ff11',
       action: () => navigation?.navigate('ChatScreen'),
     },
     {
@@ -76,7 +84,7 @@ const Explore = ({ navigation }: any) => {
       content: 'Study Timer',
       icon: 'timer-sand',
       status: 'Ready to focus',
-      color: '#e4b9b9',
+      color: '#f55c5c',
       action: () => navigation?.navigate('StudyTimerScreen'),
     },
   ];
@@ -102,6 +110,184 @@ const Explore = ({ navigation }: any) => {
       </View>
     </Pressable>
   );
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: backgroundColor,
+      padding: 20,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 30,
+      paddingBottom: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    logoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    logoIcon: {
+      width: 40,
+      height: 40,
+      backgroundColor: '#00d4ff',
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    logoText: {
+      color: textColor,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    appTitle: {
+      color: textColor,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    appSubtitle: {
+      color: textColor,
+      fontSize: 12,
+    },
+    statusIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      backgroundColor: '#00ff88',
+      borderRadius: 4,
+      marginRight: 6,
+    },
+    statusText: {
+      color: '#00ff88',
+      fontSize: 12,
+    },
+    quickActions: {
+      flexDirection: 'row',
+      gap: 15,
+      marginBottom: 30,
+      borderRadius: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2.84,
+      elevation: 2,
+      borderWidth: 0.1,
+      borderColor: borderColor,
+    },
+    quickAction: {
+      flex: 1,
+      backgroundColor: cardBackgroundColor,
+      borderWidth: 1,
+      borderColor: borderColor,
+      borderRadius: 15,
+      padding: 20,
+      alignItems: 'center',
+    },
+    quickActionIcon: {
+      fontSize: 24,
+      marginBottom: 8,
+    },
+    quickActionTitle: {
+      color: textColor,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 4,
+      textAlign: 'center',
+    },
+    quickActionDesc: {
+      color: textColor,
+      fontSize: 11,
+      textAlign: 'center',
+    },
+    categorySection: {
+      backgroundColor: cardBackgroundColor,
+      borderWidth: 1,
+      borderColor: borderColor,
+      borderRadius: 20,
+      padding: 10,
+      marginBottom: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    categoryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 15,
+    },
+    categoryTitle: {
+      color: textColor,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    deviceCount: {
+      backgroundColor: 'rgba(0, 212, 255, 0.2)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 15,
+      borderWidth: 0.2,
+      borderColor: textColor,
+    },
+    deviceCountText: {
+      color: isDarkMode ? '#00d4ff' : 'black',
+      fontSize: 11,
+    },
+    categoryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    categoryItem: {
+      width: '48%',
+      backgroundColor: backgroundColor,
+      borderWidth: 1,
+      borderColor: borderColor,
+      borderRadius: 12,
+      padding: 15,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2.84,
+      elevation: 1,
+    },
+    itemContent: {
+      alignItems: 'center',
+    },
+    itemIcon: {
+      fontSize: 18,
+      marginBottom: 8,
+    },
+    itemText: {
+      alignItems: 'center',
+    },
+    itemTitle: {
+      color: textColor,
+      fontSize: 12,
+      fontWeight: '500',
+      marginBottom: 3,
+      textAlign: 'center',
+    },
+    itemStatus: {
+      color: textColor,
+      fontSize: 10,
+      textAlign: 'center',
+    },
+    voiceButtonContainer: {
+      alignItems: 'center',
+      marginTop: 20,
+      marginBottom: 30,
+    },
+  });
 
   return (
     <ScrollView style={styles.container}>
@@ -165,177 +351,3 @@ const Explore = ({ navigation }: any) => {
 };
 
 export default Explore;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a0a0a',
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#00d4ff',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  appTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  appSubtitle: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-  },
-  statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    backgroundColor: '#00ff88',
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    color: '#00ff88',
-    fontSize: 12,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 15,
-    marginBottom: 30,
-  },
-  quickAction: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-  },
-  quickActionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  quickActionTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  quickActionDesc: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  categorySection: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 10,
-    marginBottom: 20,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  categoryTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deviceCount: {
-    backgroundColor: 'rgba(0, 212, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 15,
-  },
-  deviceCountText: {
-    color: '#00d4ff',
-    fontSize: 11,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  categoryItem: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 15,
-  },
-  itemContent: {
-    alignItems: 'center',
-  },
-  itemIcon: {
-    fontSize: 18,
-    marginBottom: 8,
-  },
-  itemText: {
-    alignItems: 'center',
-  },
-  itemTitle: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 3,
-    textAlign: 'center',
-  },
-  itemStatus: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  voiceButtonContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  voiceButton: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#00d4ff',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#00d4ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  voiceButtonIcon: {
-    fontSize: 24,
-  },
-});
