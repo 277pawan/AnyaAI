@@ -1,49 +1,76 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { useColorScheme } from 'react-native';
 import HomeScreen from './src/screens/homeScreen';
 import Explore from './src/screens/explore';
 import Settings from './src/screens/settings';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const Stack = createNativeStackNavigator();
-
-const StackNavigator = () => {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="Explore" component={Explore} />
-      <Stack.Screen name="Settings" component={Settings} />
-    </Stack.Navigator>
-  );
-};
+const Tab = createBottomTabNavigator();
 
 const App = () => {
+  const theme = useColorScheme();
+  const iconColor = theme === 'dark' ? 'white' : 'black';
+  const bgColor = theme === 'dark' ? '#0a0a0a' : 'white';
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <StackNavigator />
+        <Tab.Navigator
+          initialRouteName="Home"
+          screenOptions={({ route }) => ({
+            tabBarActiveTintColor: iconColor,
+            tabBarInactiveTintColor: 'gray',
+            tabBarStyle: { height: 64, backgroundColor: bgColor },
+            tabBarIconStyle: { height: 32 },
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => {
+              let iconName;
+
+              switch (route.name) {
+                case 'Home':
+                  iconName = 'home';
+                  break;
+                case 'Explore':
+                  iconName = 'compass';
+                  break;
+                case 'Settings':
+                  iconName = 'cog';
+                  break;
+                default:
+                  iconName = 'circle';
+              }
+
+              return (
+                <MaterialCommunityIcons
+                  name={iconName}
+                  color={color}
+                  size={32}
+                />
+              );
+            },
+          })}
+        >
+          <Tab.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ tabBarLabel: 'Home', tabBarShowLabel: true }}
+          />
+          <Tab.Screen name="Explore" component={Explore} />
+          <Tab.Screen
+            name="Settings"
+            component={Settings}
+            options={{
+              headerShown: true,
+              headerStyle: { backgroundColor: bgColor },
+              headerTintColor: iconColor,
+            }}
+          />
+        </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f2f2f2',
-  },
-  text: {
-    fontSize: 20,
-    color: '#333',
-  },
-});
 
 export default App;
