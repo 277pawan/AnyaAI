@@ -25,7 +25,7 @@ const App = () => {
             tabBarStyle: { height: 64, backgroundColor: bgColor },
             tabBarIconStyle: { height: 32 },
             headerShown: false,
-            tabBarIcon: ({ color, size }) => {
+            tabBarIcon: ({ color }) => {
               let iconName;
 
               switch (route.name) {
