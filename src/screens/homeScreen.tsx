@@ -18,7 +18,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 const HomeScreen: React.FC = ({ navigation }: any) => {
   const theme = useColorScheme();
   const isDarkMode = theme === 'dark';
-  const backgroundColor = isDarkMode ? '#0a0a0a' : '#ffffff';
+  const backgroundColor = isDarkMode ? '#000000' : '#ffffff';
   const textColor = isDarkMode ? '#ffffff' : '#000000';
   const cardBackgroundColor = isDarkMode ? '#1a1a1a' : '#f8f9fa';
   const borderColor = isDarkMode ? '#333333' : '#e5e7eb';
