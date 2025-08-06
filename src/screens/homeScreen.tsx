@@ -11,9 +11,10 @@ import {
   FlatList,
   TouchableWithoutFeedback,
   StatusBar,
+  Alert,
 } from 'react-native';
-import VoiceAssistant from './components/micWaves/micVisualizer';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import WebViewVoiceAssistant from './components/micWaves/micVisualizer';
 
 const HomeScreen: React.FC = ({ navigation }: any) => {
   const theme = useColorScheme();
@@ -35,17 +36,21 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
 
   const handleStop = (duration: number, audioBuffer: number[]) => {
     console.log(
-      `🛑 Stopped after ${duration.toFixed(2)} sec`,
-      audioBuffer.length,
+      `🛑 Stopped after ${duration.toFixed(2)} sec with ${
+        audioBuffer.length
+      } audio samples`,
     );
   };
 
   const handleDecibel = (db: number) => {
-    console.log(`🔊 Current dB: ${db}`);
+    // Only log significant decibel changes to reduce console spam
+    // console.log(`🔊 Current dB: ${db}`);
   };
 
   const handleSpeech = (text: string) => {
-    console.log(`💬 Recognized: ${text}`);
+    console.log(`💬 SPEECH RECOGNIZED: "${text}"`);
+    // Show an alert to confirm speech was recognized
+    Alert.alert('Speech Recognized!', `You said: "${text}"`);
   };
 
   const handleStartListening = useCallback(() => {
@@ -167,7 +172,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <MaterialCommunityIcon name="robot" size={60} color={textColor} />
-          <VoiceAssistant
+          <WebViewVoiceAssistant
             onStartListening={handleStart}
             onStopListening={handleStop}
             onDecibelChange={handleDecibel}
