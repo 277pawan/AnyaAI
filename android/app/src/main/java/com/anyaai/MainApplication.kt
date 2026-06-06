@@ -1,6 +1,10 @@
 package com.anyaai
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import com.anyaai.bridge.AnyaServicePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -16,8 +20,8 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-              // Packages that cannot be autolinked yet can be added manually here, for example:
-              // add(MyReactNativePackage())
+              // Anya background mic service + QS tile bridge
+              add(AnyaServicePackage())
             }
 
         override fun getJSMainModuleName(): String = "index"
@@ -34,5 +38,20 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     loadReactNative(this)
+    createNotificationChannel()
+  }
+
+  private fun createNotificationChannel() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channel = NotificationChannel(
+        "default_notification_channel",
+        "Default Notifications",
+        NotificationManager.IMPORTANCE_HIGH
+      ).apply {
+        description = "Anya alerts and nudges"
+      }
+      val manager = getSystemService(NotificationManager::class.java)
+      manager?.createNotificationChannel(channel)
+    }
   }
 }

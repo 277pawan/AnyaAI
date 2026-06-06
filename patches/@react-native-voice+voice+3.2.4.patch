@@ -1,0 +1,38 @@
+diff --git a/node_modules/@react-native-voice/voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java b/node_modules/@react-native-voice/voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
+index f22833e..6bfe44c 100644
+--- a/node_modules/@react-native-voice/voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
++++ b/node_modules/@react-native-voice/voice/android/src/main/java/com/wenkesj/voice/VoiceModule.java
+@@ -321,9 +321,13 @@ public class VoiceModule extends ReactContextBaseJavaModule implements Recogniti
+   public void onPartialResults(Bundle results) {
+     WritableArray arr = Arguments.createArray();
+ 
+-    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+-    for (String result : matches) {
+-      arr.pushString(result);
++    ArrayList<String> matches = results != null
++        ? results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
++        : null;
++    if (matches != null) {
++      for (String result : matches) {
++        arr.pushString(result);
++      }
+     }
+ 
+     WritableMap event = Arguments.createMap();
+@@ -344,9 +348,13 @@ public class VoiceModule extends ReactContextBaseJavaModule implements Recogniti
+   public void onResults(Bundle results) {
+     WritableArray arr = Arguments.createArray();
+ 
+-    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+-    for (String result : matches) {
+-      arr.pushString(result);
++    ArrayList<String> matches = results != null
++        ? results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
++        : null;
++    if (matches != null) {
++      for (String result : matches) {
++        arr.pushString(result);
++      }
+     }
+ 
+     WritableMap event = Arguments.createMap();

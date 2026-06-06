@@ -1,12 +1,26 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions -->
+    <!-- ── Standard Permissions ────────────────────────────────────────── -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- ── Background Service Permissions ──────────────────────────────── -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Android 13+ notification permission -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MainApplication"
@@ -15,8 +29,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"
         android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true"
         android:supportsRtl="true">
 
+        <!-- Firebase Cloud Messaging Default Settings -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_anya_notif" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_notification_channel"
+            tools:replace="android:value" />
+
+        <!-- ── Main Activity ──────────────────────────────────────────── -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
@@ -26,13 +51,42 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <action android:name="android.speech.RecognitionService" />
-                <action android:name="android.intent.action.TTS_SERVICE" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- ── Background Mic Foreground Service ─────────────────────── -->
+        <!--
+            Shows a persistent notification card with Speak / Stop buttons.
+            Started on app launch and by the QS tile.
+        -->
+        <service
+            android:name=".service.MicrophoneService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- ── Quick Settings Tile ────────────────────────────────────── -->
+        <!--
+            Adds an "Anya AI" toggle to the Quick Settings panel
+            (pull down twice → Edit → drag "Anya AI" tile up).
+
+            Tapping ON  → starts MicrophoneService (tile glows like Bluetooth)
+            Tapping OFF → stops service (via notification Stop button)
+            Tapping when ON → triggers a new listen session immediately
+        -->
+        <service
+            android:name=".tile.AnyaQSTileService"
+            android:exported="true"
+            android:label="Anya AI"
+            android:icon="@drawable/ic_anya_notif"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
     </application>
 </manifest>
-
-

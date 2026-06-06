@@ -1,97 +1,136 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# AnyaAI Mobile Application
 
-# Getting Started
+Welcome to the **AnyaAI** mobile application codebase! This is a state-of-the-art React Native voice-assistant app styled with a premium futuristic dark theme, dynamic mic visualizers, IST-aware history logs, and a fully visual vertical cockpit dashboard.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+This guide provides a comprehensive, step-by-step walkthrough for **running**, **debugging**, and **building the production APK** on your mobile device.
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 📱 Quick Start Checklist
+Before starting, ensure you have:
+1. **JDK 17** installed and configured (`java -version`).
+2. **Android SDK** installed with matching platform tools.
+3. Your `ANDROID_HOME` path correctly exported in your shell config (e.g., `~/.bashrc` or `~/.zshrc`):
+   ```bash
+   export ANDROID_HOME=$HOME/Android/Sdk
+   export PATH=$PATH:$ANDROID_HOME/emulator
+   export PATH=$PATH:$ANDROID_HOME/tools
+   export PATH=$PATH:$ANDROID_HOME/tools/bin
+   export PATH=$PATH:$ANDROID_HOME/platform-tools
+   ```
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+---
 
-```sh
-# Using npm
-npm start
+## ⚡ Step 1: Preparing Your Physical Android Device
 
-# OR using Yarn
-yarn start
+To run the app directly on your physical Android phone:
+1. **Enable Developer Options**: Go to `Settings -> About Phone -> Software Information` and tap **Build Number** 7 times until you see "Developer mode has been enabled".
+2. **Enable USB Debugging**: Go back to `Settings -> Developer Options` and toggle **USB Debugging** to ON.
+3. **Connect Your Phone**: Plug your phone into your computer via a high-quality USB cable.
+4. **Confirm Connection**: Open your terminal and run:
+   ```bash
+   adb devices
+   ```
+   You should see your device listed (e.g., `R9ZN70WTT1T  device`).
+
+---
+
+## 🚀 Step 2: Bridge Connectivity (CRITICAL)
+
+Because the mobile app runs inside your physical phone and the backend Anya MCP server runs on your laptop's `localhost` (Port `3000`), you must **reverse forward** the ports so the phone can communicate with your computer:
+
+```bash
+# Reverse forward the Metro bundler port
+adb reverse tcp:8081 tcp:8081
+
+# Reverse forward the Backend API port
+adb reverse tcp:3000 tcp:3000
 ```
+> [!IMPORTANT]
+> Run these `adb reverse` commands every time you reconnect your phone to ensure the app doesn't show connection errors.
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## 🛠️ Step 3: Run the Development Server
 
-### Android
+1. **Start the Metro Bundler**:
+   ```bash
+   npm start
+   ```
+   Keep this terminal window open.
 
-```sh
-# Using npm
-npm run android
+2. **Build and Run the App on Android**:
+   Open a separate terminal window and run:
+   ```bash
+   npm run android
+   ```
+   This will compile the native code, install the debug APK on your connected device, and launch the application.
 
-# OR using Yarn
-yarn android
-```
+---
 
-### iOS
+## 📦 Step 4: Compiling & Packaging the APKs
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+When you are ready to compile standalone installer packages (`.apk`) that can be shared or permanently installed on phones without running a Metro dev server, follow these instructions:
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### A. Compile a Standalone Debug APK
+If you just want a test APK to share with others that runs independently:
+1. Navigate to the `android` folder:
+   ```bash
+   cd android
+   ```
+2. Clean existing caches:
+   ```bash
+   ./gradlew clean
+   ```
+3. Assemble the debug APK:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+4. **Where to find the APK**:
+   Your newly compiled installer is located at:
+   `android/app/build/outputs/apk/debug/app-debug.apk`
 
-```sh
-bundle install
-```
+---
 
-Then, and every time you update your native dependencies, run:
+### B. Compile the Production Release APK (Optimized)
+To build a highly optimized, fully minified, and lightweight Production Release APK:
+1. Navigate to the `android` folder:
+   ```bash
+   cd android
+   ```
+2. Clean existing caches:
+   ```bash
+   ./gradlew clean
+   ```
+3. Compile the production binary:
+   ```bash
+   ./gradlew assembleRelease
+   ```
+4. **Where to find the Release APK**:
+   Your production installer is located at:
+   `android/app/build/outputs/apk/release/app-release.apk`
 
-```sh
-bundle exec pod install
-```
+---
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 🔍 Troubleshooting Guide
 
-```sh
-# Using npm
-npm run ios
+### 1. `TypeError: Network request failed` / WebSocket Errors
+- Ensure the backend service is running locally (`npm run dev` in `/anya-mcp-server`).
+- Make sure you ran:
+  ```bash
+  adb reverse tcp:3000 tcp:3000
+  ```
 
-# OR using Yarn
-yarn ios
-```
+### 2. Device Unreachable or Emulator Issues
+- Toggle your USB Debugging off and back on in your phone's Developer settings.
+- Run `adb kill-server && adb start-server` to reset the ADB connection bridge.
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+### 3. Gradle Build Cache Failures
+- If native packages are not compiling correctly after changing permissions or versions, clean the build cache:
+  ```bash
+  cd /home/pawan-bisht/Documents/Anya-\)/AnyaAI/android
+./gradlew clean
+./gradlew assembleDebug
+  cd android && ./gradlew clean
+  ```
+  Then rebuild using `npm run android`.
