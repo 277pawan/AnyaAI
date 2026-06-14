@@ -1,0 +1,143 @@
+diff --git a/node_modules/react-native-document-picker/android/build/generated/source/buildConfig/release/com/reactnativedocumentpicker/BuildConfig.java b/node_modules/react-native-document-picker/android/build/generated/source/buildConfig/release/com/reactnativedocumentpicker/BuildConfig.java
+new file mode 100644
+index 0000000..259349d
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/generated/source/buildConfig/release/com/reactnativedocumentpicker/BuildConfig.java
+@@ -0,0 +1,12 @@
++/**
++ * Automatically generated file. DO NOT MODIFY
++ */
++package com.reactnativedocumentpicker;
++
++public final class BuildConfig {
++  public static final boolean DEBUG = false;
++  public static final String LIBRARY_PACKAGE_NAME = "com.reactnativedocumentpicker";
++  public static final String BUILD_TYPE = "release";
++  // Field from default config.
++  public static final boolean IS_NEW_ARCHITECTURE_ENABLED = false;
++}
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/annotation_processor_list/release/javaPreCompileRelease/annotationProcessors.json b/node_modules/react-native-document-picker/android/build/intermediates/annotation_processor_list/release/javaPreCompileRelease/annotationProcessors.json
+new file mode 100644
+index 0000000..9e26dfe
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/annotation_processor_list/release/javaPreCompileRelease/annotationProcessors.json
+@@ -0,0 +1 @@
++{}
+\ No newline at end of file
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/compile_r_class_jar/release/generateReleaseRFile/R.jar b/node_modules/react-native-document-picker/android/build/intermediates/compile_r_class_jar/release/generateReleaseRFile/R.jar
+new file mode 100644
+index 0000000..b442b9b
+Binary files /dev/null and b/node_modules/react-native-document-picker/android/build/intermediates/compile_r_class_jar/release/generateReleaseRFile/R.jar differ
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/compile_symbol_list/release/generateReleaseRFile/R.txt b/node_modules/react-native-document-picker/android/build/intermediates/compile_symbol_list/release/generateReleaseRFile/R.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/incremental/mergeReleaseJniLibFolders/merger.xml b/node_modules/react-native-document-picker/android/build/intermediates/incremental/mergeReleaseJniLibFolders/merger.xml
+new file mode 100644
+index 0000000..5baea61
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/incremental/mergeReleaseJniLibFolders/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/main/jniLibs"/></dataSet><dataSet config="release" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/release/jniLibs"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/compile-file-map.properties b/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/compile-file-map.properties
+new file mode 100644
+index 0000000..eaf99fc
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/compile-file-map.properties
+@@ -0,0 +1 @@
++#Sat Jun 06 17:09:28 IST 2026
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/merger.xml b/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/merger.xml
+new file mode 100644
+index 0000000..8e112a3
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/incremental/release/packageReleaseResources/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/main/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/main/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="release$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/release/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="release" generated-set="release$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/src/release/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/build/generated/res/resValues/release"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated" generated-set="generated$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/home/pawan-bisht/Documents/Anya-)/AnyaAI/node_modules/react-native-document-picker/android/build/generated/res/resValues/release"/></dataSet><mergedItems/></merger>
+\ No newline at end of file
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/local_only_symbol_list/release/parseReleaseLocalResources/R-def.txt b/node_modules/react-native-document-picker/android/build/intermediates/local_only_symbol_list/release/parseReleaseLocalResources/R-def.txt
+new file mode 100644
+index 0000000..78ac5b8
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/local_only_symbol_list/release/parseReleaseLocalResources/R-def.txt
+@@ -0,0 +1,2 @@
++R_DEF: Internal format may change without notice
++local
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/nested_resources_validation_report/release/generateReleaseResources/nestedResourcesValidationReport.txt b/node_modules/react-native-document-picker/android/build/intermediates/nested_resources_validation_report/release/generateReleaseResources/nestedResourcesValidationReport.txt
+new file mode 100644
+index 0000000..08f4ebe
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/nested_resources_validation_report/release/generateReleaseResources/nestedResourcesValidationReport.txt
+@@ -0,0 +1 @@
++0 Warning/Error
+\ No newline at end of file
+diff --git a/node_modules/react-native-document-picker/android/build/intermediates/symbol_list_with_package_name/release/generateReleaseRFile/package-aware-r.txt b/node_modules/react-native-document-picker/android/build/intermediates/symbol_list_with_package_name/release/generateReleaseRFile/package-aware-r.txt
+new file mode 100644
+index 0000000..df6e602
+--- /dev/null
++++ b/node_modules/react-native-document-picker/android/build/intermediates/symbol_list_with_package_name/release/generateReleaseRFile/package-aware-r.txt
+@@ -0,0 +1 @@
++com.reactnativedocumentpicker
+diff --git a/node_modules/react-native-document-picker/android/src/main/java/com/reactnativedocumentpicker/RNDocumentPickerModule.java b/node_modules/react-native-document-picker/android/src/main/java/com/reactnativedocumentpicker/RNDocumentPickerModule.java
+index 5001525..f1b14a0 100644
+--- a/node_modules/react-native-document-picker/android/src/main/java/com/reactnativedocumentpicker/RNDocumentPickerModule.java
++++ b/node_modules/react-native-document-picker/android/src/main/java/com/reactnativedocumentpicker/RNDocumentPickerModule.java
+@@ -18,7 +18,7 @@ import androidx.annotation.NonNull;
+ import com.facebook.react.bridge.ActivityEventListener;
+ import com.facebook.react.bridge.Arguments;
+ import com.facebook.react.bridge.BaseActivityEventListener;
+-import com.facebook.react.bridge.GuardedResultAsyncTask;
++
+ import com.facebook.react.bridge.Promise;
+ import com.facebook.react.bridge.ReactApplicationContext;
+ import com.facebook.react.bridge.ReactContext;
+@@ -229,32 +229,34 @@ public class RNDocumentPickerModule extends NativeDocumentPickerSpec {
+     }
+   }
+ 
+-  private static class ProcessDataTask extends GuardedResultAsyncTask<ReadableArray> {
++  private static class ProcessDataTask {
+     private final WeakReference<Context> weakContext;
+     private final List<Uri> uris;
+     private final String copyTo;
+     private final Promise promise;
+ 
+     protected ProcessDataTask(ReactContext reactContext, List<Uri> uris, String copyTo, Promise promise) {
+-      super(reactContext.getExceptionHandler());
+       this.weakContext = new WeakReference<>(reactContext.getApplicationContext());
+       this.uris = uris;
+       this.copyTo = copyTo;
+       this.promise = promise;
+     }
+ 
+-    @Override
+-    protected ReadableArray doInBackgroundGuarded() {
+-      WritableArray results = Arguments.createArray();
+-      for (Uri uri : uris) {
+-        results.pushMap(getMetadata(uri));
+-      }
+-      return results;
+-    }
+-
+-    @Override
+-    protected void onPostExecuteGuarded(ReadableArray readableArray) {
+-      promise.resolve(readableArray);
++    public void execute() {
++      new Thread(new Runnable() {
++        @Override
++        public void run() {
++          try {
++            WritableArray results = Arguments.createArray();
++            for (Uri uri : uris) {
++              results.pushMap(getMetadata(uri));
++            }
++            promise.resolve(results);
++          } catch (Exception e) {
++            promise.reject(E_UNEXPECTED_EXCEPTION, e.getLocalizedMessage(), e);
++          }
++        }
++      }).start();
+     }
+ 
+     private WritableMap getMetadata(Uri uri) {

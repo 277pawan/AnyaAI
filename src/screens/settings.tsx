@@ -33,6 +33,7 @@ import {
 } from '../services/voiceBiometrics';
 import { SweetLoader } from './components/SweetLoader';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import DocumentPicker from 'react-native-document-picker';
 
 
 
@@ -920,108 +921,107 @@ const Settings = ({ navigation }: any) => {
     }, 1500);
   };
 
-  // Cloudinary Signed Upload Integration
-  const handleCloudinaryResumeUpload = async () => {
-    const compiledText = compileMarkdownResume();
-    if (
-      !resumeSummary.trim() &&
-      resumeExperiences.length === 0 &&
-      resumeProjects.length === 0
-    ) {
+  // Direct Resume Settings Saver (PDF URL + File Name)
+  const handleSaveResumeSettingsDirect = async () => {
+    if (!uploadedResumeUrl.trim()) {
       Alert.alert(
         'Validation Error',
-        'Please complete at least one section before uploading.',
+        'Please enter a valid URL for your resume.',
       );
       return;
     }
 
     setIsUploading(true);
     try {
-      const cloudName = 'dc30b7tnj';
-      const apiKey = '476665488391659';
-      const apiSecret = 'd0udX-BDyMyITJDFCBkhvrRKpEM';
-      const timestamp = Math.floor(Date.now() / 1000);
+      const updatedPrefs = {
+        ...preferences,
+        resume: {
+          url: uploadedResumeUrl.trim(),
+          fileName: selectedSimulatedFile.trim() || 'Resume.pdf',
+          uploadedAt: new Date().toISOString(),
+        },
+      };
 
-      const signatureString = `timestamp=${timestamp}${apiSecret}`;
-      const signature = sha1(signatureString);
-
-      const base64Content = base64Encode(compiledText);
-      const dataUri = `data:text/plain;base64,${base64Content}`;
-
-      const formData = new FormData();
-      formData.append('file', dataUri);
-      formData.append('api_key', apiKey);
-      formData.append('timestamp', timestamp.toString());
-      formData.append('signature', signature);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+      const prefResponse = await fetch(
+        `${CONFIG.API_BASE_URL}/api/user/preferences`,
         {
-          method: 'POST',
-          body: formData,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': '89968338-6678-48e0-be01-f8472e550e1d',
+          },
+          body: JSON.stringify(updatedPrefs),
         },
       );
 
-      const result = await response.json();
+      const prefJson = await prefResponse.json();
 
-      if (result.secure_url) {
-        const liveUrl = result.secure_url;
-        const updatedPrefs = {
-          ...preferences,
-          resume: {
-            url: liveUrl,
-            raw_text: compiledText,
-            fileName: selectedSimulatedFile,
-            summary: resumeSummary,
-            experiences: resumeExperiences,
-            projects: resumeProjects,
-            uploadedAt: new Date().toISOString(),
-          },
-        };
-
-        const prefResponse = await fetch(
-          `${CONFIG.API_BASE_URL}/api/user/preferences`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-user-id': '89968338-6678-48e0-be01-f8472e550e1d',
-            },
-            body: JSON.stringify(updatedPrefs),
-          },
+      if (prefJson.success) {
+        setUploadedResumeUrl(uploadedResumeUrl.trim());
+        setPreferences(updatedPrefs);
+        setIsResumeModalVisible(false);
+        Alert.alert(
+          'Success',
+          'Resume URL saved successfully!',
         );
-
-        const prefJson = await prefResponse.json();
-
-        if (prefJson.success) {
-          setUploadedResumeUrl(liveUrl);
-          setPreferences(updatedPrefs);
-          setResumeText(compiledText);
-          setIsResumeModalVisible(false);
-          Alert.alert(
-            'Success',
-            'Resume formatted by AI and uploaded to Cloudinary successfully!',
-          );
-        } else {
-          Alert.alert(
-            'Save Error',
-            'Failed to save resume link inside preferences.',
-          );
-        }
       } else {
         Alert.alert(
-          'Upload Failed',
-          result.error?.message || 'Failed uploading to Cloudinary.',
+          'Save Error',
+          'Failed to save resume link inside preferences.',
         );
       }
     } catch (error: any) {
-      console.error('Cloudinary upload error:', error);
+      console.error('Error saving resume preferences:', error);
       Alert.alert(
         'System Error',
-        error.message || 'An error occurred during Cloudinary upload.',
+        error.message || 'An error occurred while saving resume settings.',
       );
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // ─── Pick PDF from device & upload to Cloudinary via backend ───────────────
+  const handlePickAndUploadResume = async () => {
+    try {
+      const result = await DocumentPicker.pickSingle({
+        type: [DocumentPicker.types.pdf],
+        copyTo: 'cachesDirectory',
+      });
+
+      const fileUri  = result.fileCopyUri || result.uri;
+      const fileName = result.name || 'Resume.pdf';
+
+      if (!fileUri) {
+        Alert.alert('Error', 'Could not read selected file. Please try again.');
+        return;
+      }
+
+      setIsUploading(true);
+      showLoader('Uploading Resume…');
+
+      const response = await UserAPI.uploadResume(fileUri, fileName);
+
+      if (response?.success && response?.url) {
+        setUploadedResumeUrl(response.url);
+        setSelectedSimulatedFile(fileName);
+        setPreferences((prev: any) => ({
+          ...prev,
+          resume: { url: response.url, fileName },
+        }));
+        Alert.alert('✅ Resume Uploaded', `Your resume has been uploaded to Cloudinary and saved successfully!\n\n${fileName}`);
+        setIsResumeModalVisible(false);
+      } else {
+        Alert.alert('Upload Failed', response?.error || 'Failed to upload resume. Please try again.');
+      }
+    } catch (err: any) {
+      if (!DocumentPicker.isCancel(err)) {
+        console.error('[Resume Upload] Error:', err);
+        Alert.alert('Error', err.message || 'Something went wrong during upload.');
+      }
+    } finally {
+      setIsUploading(false);
+      hideLoader();
     }
   };
 
@@ -3080,590 +3080,118 @@ const Settings = ({ navigation }: any) => {
                     Resume Portfolio Manager
                   </Text>
 
-                  {/* ✨ Anya AI Auto-Format Assistant */}
-                  <View
-                    style={[
-                      styles.aiAssistPanel,
-                      {
-                        backgroundColor: isDark
-                          ? 'rgba(59, 130, 246, 0.08)'
-                          : 'rgba(59, 130, 246, 0.04)',
-                        borderColor: '#3b82f6',
-                      },
-                    ]}
-                  >
-                    <View style={styles.aiAssistHeader}>
-                      <MaterialCommunityIcons
-                        name="auto-fix"
-                        size={18}
-                        color="#3b82f6"
-                      />
-                      <Text
-                        style={[styles.aiAssistTitle, { color: textColor }]}
-                      >
-                        Anya AI Formatting Assistant
-                      </Text>
-                    </View>
-                    <Text
-                      style={[styles.aiAssistSubtitle, { color: subtextColor }]}
-                    >
-                      Tapping format will automatically capitalize company
-                      titles, align bullets (•), and polish text grammar!
-                    </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.aiFormatBtn,
-                        { backgroundColor: '#3b82f6' },
-                      ]}
-                      onPress={handleAIAutoFormat}
-                      disabled={isFormatting}
-                    >
-                      {isFormatting ? (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="loading"
-                            size={16}
-                            color="#fff"
-                            style={styles.spinningIcon}
-                          />
-                          <Text style={styles.aiFormatBtnText}>
-                            Formatting your CV...
-                          </Text>
-                        </View>
-                      ) : (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="sparkles"
-                            size={16}
-                            color="#fff"
-                          />
-                          <Text style={styles.aiFormatBtnText}>
-                            Format & Align CV
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* 1. Professional Summary Card */}
-                  <Text
-                    style={[
-                      styles.formSectionHeading,
-                      { color: '#3b82f6', marginTop: 14 },
-                    ]}
-                  >
-                    1. Professional Summary
-                  </Text>
-                  <View
-                    style={[
-                      styles.cvFormCard,
-                      {
-                        backgroundColor: isDark ? '#1a1a1a' : '#f9fafb',
-                        borderColor,
-                      },
-                    ]}
-                  >
-                    <TextInput
-                      multiline
-                      numberOfLines={4}
-                      style={[styles.cvInputMultiline, { color: textColor }]}
-                      value={resumeSummary}
-                      onChangeText={setResumeSummary}
-                      placeholder="Write your professional summary. E.g. Experienced developer specializing in personal AI helpers..."
-                      placeholderTextColor={subtextColor}
-                    />
-                  </View>
-
-                  {/* 2. Work Experiences Card */}
-                  <Text
-                    style={[
-                      styles.formSectionHeading,
-                      { color: '#10b981', marginTop: 20 },
-                    ]}
-                  >
-                    2. Work Experiences
-                  </Text>
-                  <View
-                    style={[
-                      styles.cvFormCard,
-                      {
-                        backgroundColor: isDark ? '#1a1a1a' : '#f9fafb',
-                        borderColor,
-                      },
-                    ]}
-                  >
-                    {/* List Experiences */}
-                    {resumeExperiences.map((exp, idx) => (
-                      <View
-                        key={exp.id || idx}
-                        style={[
-                          styles.cvItemPill,
-                          { borderBottomColor: borderColor },
-                        ]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[styles.cvItemTitle, { color: textColor }]}
-                          >
-                            {exp.role} @ {exp.company}
-                          </Text>
-                          <Text
-                            style={[styles.cvItemSub, { color: '#10b981' }]}
-                          >
-                            {exp.duration}
-                          </Text>
-                          <Text
-                            style={[styles.cvItemDesc, { color: subtextColor }]}
-                          >
-                            {exp.description}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.cvItemDelete}
-                          onPress={() => {
-                            setResumeExperiences(prev =>
-                              prev.filter(item => item.id !== exp.id),
-                            );
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="trash-can-outline"
-                            size={18}
-                            color="#ef4444"
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-
-                    {/* Add Experience Inline block */}
-                    <View
-                      style={[
-                        styles.cvFormBlock,
-                        { borderTopColor: borderColor },
-                      ]}
-                    >
-                      <Text style={[styles.cvBlockLabel, { color: textColor }]}>
-                        Add Work Experience
-                      </Text>
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={expCompany}
-                        onChangeText={setExpCompany}
-                        placeholder="Company (e.g. Google Deepmind)"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={expRole}
-                        onChangeText={setExpRole}
-                        placeholder="Role (e.g. Software Engineer)"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={expDuration}
-                        onChangeText={setExpDuration}
-                        placeholder="Duration (e.g. 2022 - 2023)"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={expDesc}
-                        onChangeText={setExpDesc}
-                        placeholder="Key Achievement Description"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.cvAddPillBtn,
-                          { backgroundColor: '#10b981' },
-                        ]}
-                        onPress={() => {
-                          if (!expCompany.trim() || !expRole.trim()) {
-                            Alert.alert(
-                              'Validation Error',
-                              'Please complete Company and Role.',
-                            );
-                            return;
-                          }
-                          const newExp = {
-                            id: Date.now().toString(),
-                            company: expCompany.trim(),
-                            role: expRole.trim(),
-                            duration: expDuration.trim() || '2023',
-                            description:
-                              expDesc.trim() ||
-                              '• Contributed to code development.',
-                          };
-                          setResumeExperiences(prev => [...prev, newExp]);
-                          setExpCompany('');
-                          setExpRole('');
-                          setExpDuration('');
-                          setExpDesc('');
-                        }}
-                      >
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="plus"
-                            size={16}
-                            color="#fff"
-                          />
-                          <Text
-                            style={{
-                              color: '#fff',
-                              fontWeight: 'bold',
-                              fontSize: 12,
-                            }}
-                          >
-                            Add Experience
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* 3. Projects Card */}
-                  <Text
-                    style={[
-                      styles.formSectionHeading,
-                      { color: '#8b5cf6', marginTop: 20 },
-                    ]}
-                  >
-                    3. Personal Projects
-                  </Text>
-                  <View
-                    style={[
-                      styles.cvFormCard,
-                      {
-                        backgroundColor: isDark ? '#1a1a1a' : '#f9fafb',
-                        borderColor,
-                      },
-                    ]}
-                  >
-                    {/* List Projects */}
-                    {resumeProjects.map((proj, idx) => (
-                      <View
-                        key={proj.id || idx}
-                        style={[
-                          styles.cvItemPill,
-                          { borderBottomColor: borderColor },
-                        ]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[styles.cvItemTitle, { color: textColor }]}
-                          >
-                            {proj.name}
-                          </Text>
-                          <Text
-                            style={[styles.cvItemSub, { color: '#8b5cf6' }]}
-                          >
-                            {proj.url}
-                          </Text>
-                          <Text
-                            style={[styles.cvItemDesc, { color: subtextColor }]}
-                          >
-                            {proj.description}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.cvItemDelete}
-                          onPress={() => {
-                            setResumeProjects(prev =>
-                              prev.filter(item => item.id !== proj.id),
-                            );
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="trash-can-outline"
-                            size={18}
-                            color="#ef4444"
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-
-                    {/* Add Project Inline block */}
-                    <View
-                      style={[
-                        styles.cvFormBlock,
-                        { borderTopColor: borderColor },
-                      ]}
-                    >
-                      <Text style={[styles.cvBlockLabel, { color: textColor }]}>
-                        Add Project
-                      </Text>
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={projName}
-                        onChangeText={setProjName}
-                        placeholder="Project Name (e.g. Nitro Scraper)"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={projUrl}
-                        onChangeText={setProjUrl}
-                        placeholder="Link (e.g. github.com/277pawan/nitro)"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TextInput
-                        style={[
-                          styles.cvMiniInput,
-                          {
-                            color: textColor,
-                            borderColor,
-                            backgroundColor: isDark ? '#111' : '#fff',
-                          },
-                        ]}
-                        value={projDesc}
-                        onChangeText={setProjDesc}
-                        placeholder="Project Description Details"
-                        placeholderTextColor={subtextColor}
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.cvAddPillBtn,
-                          { backgroundColor: '#8b5cf6' },
-                        ]}
-                        onPress={() => {
-                          if (!projName.trim()) {
-                            Alert.alert(
-                              'Validation Error',
-                              'Project Name cannot be empty.',
-                            );
-                            return;
-                          }
-                          const newProj = {
-                            id: Date.now().toString(),
-                            name: projName.trim(),
-                            url: projUrl.trim() || 'github.com',
-                            description:
-                              projDesc.trim() || '• Engineered application.',
-                          };
-                          setResumeProjects(prev => [...prev, newProj]);
-                          setProjName('');
-                          setProjUrl('');
-                          setProjDesc('');
-                        }}
-                      >
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <MaterialCommunityIcons
-                            name="plus"
-                            size={16}
-                            color="#fff"
-                          />
-                          <Text
-                            style={{
-                              color: '#fff',
-                              fontWeight: 'bold',
-                              fontSize: 12,
-                            }}
-                          >
-                            Add Project
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* 2. File Explorer Selection Simulation */}
-                  <Text
-                    style={[
-                      styles.formSectionHeading,
-                      { color: '#10b981', marginTop: 16 },
-                    ]}
-                  >
-                    Document Selector (PDF/DOCX)
-                  </Text>
                   <Text
                     style={[
                       styles.subTitleText,
-                      { color: subtextColor, marginBottom: 8 },
+                      { color: subtextColor, marginBottom: 16 },
                     ]}
                   >
-                    Simulate picking an offline file to compile & sync:
+                    Provide your live PDF resume details to attach to automated job applications.
                   </Text>
-                  <View
-                    style={{
-                      borderWidth: 1.5,
-                      borderColor: '#10b981',
-                      borderRadius: 12,
-                      padding: 12,
-                      backgroundColor: isDark ? 'rgba(16,185,129,0.06)' : 'rgba(16,185,129,0.03)',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                  >
-                    <MaterialCommunityIcons name="file-pdf-box" size={24} color="#10b981" />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#10b981', textTransform: 'uppercase' }}>
-                        Active File Name
-                      </Text>
-                      <TextInput
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 'bold',
-                          color: textColor,
-                          padding: 0,
-                          marginTop: 2,
-                        }}
-                        value={selectedSimulatedFile}
-                        onChangeText={setSelectedSimulatedFile}
-                        placeholder="Enter resume filename (e.g. My_Resume.pdf)"
-                        placeholderTextColor={subtextColor}
-                      />
-                    </View>
-                  </View>
 
-                  <View
-                    style={[
-                      styles.cloudinaryBrandingBlock,
-                      {
-                        backgroundColor: isDark
-                          ? 'rgba(59, 130, 246, 0.05)'
-                          : 'rgba(59, 130, 246, 0.03)',
-                        borderColor,
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name="cloud-upload-outline"
-                      size={16}
-                      color="#3b82f6"
-                    />
-                    <Text
-                      style={[
-                        styles.cloudinaryBrandingText,
-                        { color: subtextColor },
-                      ]}
+                  {/* Preview Button for Existing Resume */}
+                  {uploadedResumeUrl ? (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        paddingVertical: 12,
+                        borderRadius: 8,
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginBottom: 20,
+                        gap: 8,
+                      }}
+                      onPress={() => Linking.openURL(uploadedResumeUrl).catch(err => {})}
                     >
-                      Secure direct upload to Cloudinary (Preset: Signed
-                      HMAC-SHA1)
+                      <MaterialCommunityIcons name="eye" size={18} color="#10b981" />
+                      <Text style={{ color: '#10b981', fontWeight: '700', fontSize: 13 }}>
+                        Preview Current Resume
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* ─── Upload PDF Button ─── */}
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.formSectionHeading, { color: '#3b82f6', marginBottom: 10 }]}>
+                      Upload Your Resume (PDF)
                     </Text>
+
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: isUploading ? '#1e3a5f' : '#3b82f6',
+                        paddingVertical: 16,
+                        borderRadius: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 10,
+                        marginBottom: 12,
+                        opacity: isUploading ? 0.7 : 1,
+                      }}
+                      onPress={handlePickAndUploadResume}
+                      disabled={isUploading}
+                    >
+                      <MaterialCommunityIcons
+                        name={isUploading ? 'cloud-upload-outline' : 'file-upload-outline'}
+                        size={22}
+                        color="#ffffff"
+                      />
+                      <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15 }}>
+                        {isUploading ? 'Uploading to Cloudinary…' : 'Pick & Upload PDF Resume'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Current saved resume info */}
+                    {uploadedResumeUrl ? (
+                      <View style={{
+                        backgroundColor: isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.05)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(16,185,129,0.3)',
+                        borderRadius: 10,
+                        padding: 12,
+                        marginBottom: 12,
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <MaterialCommunityIcons name="check-circle" size={16} color="#10b981" />
+                          <Text style={{ color: '#10b981', fontWeight: '700', fontSize: 12 }}>Active Resume</Text>
+                        </View>
+                        <Text style={{ color: subtextColor, fontSize: 12 }} numberOfLines={1}>
+                          {selectedSimulatedFile || 'Resume.pdf'}
+                        </Text>
+                        <Text style={{ color: subtextColor, fontSize: 10, marginTop: 2 }} numberOfLines={1}>
+                          {uploadedResumeUrl}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={{
+                        backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.05)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(239,68,68,0.2)',
+                        borderRadius: 10,
+                        padding: 12,
+                        marginBottom: 12,
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#ef4444" />
+                          <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 12 }}>No resume saved yet</Text>
+                        </View>
+                        <Text style={{ color: subtextColor, fontSize: 11, marginTop: 4 }}>
+                          Pick a PDF above. Anya will attach it to every job application email automatically.
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.modalActions}>
                     <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        { backgroundColor: 'transparent' },
-                      ]}
+                      style={[styles.modalButton, { backgroundColor: 'transparent' }]}
                       onPress={() => setIsResumeModalVisible(false)}
                       disabled={isUploading}
                     >
-                      <Text
-                        style={[
-                          styles.modalButtonText,
-                          { color: subtextColor },
-                        ]}
-                      >
-                        Cancel
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modalButton,
-                        {
-                          backgroundColor: '#3b82f6',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                        },
-                      ]}
-                      onPress={handleCloudinaryResumeUpload}
-                      disabled={isUploading}
-                    >
-                      {isUploading ? (
-                        <>
-                          <MaterialCommunityIcons
-                            name="loading"
-                            size={16}
-                            color="#fff"
-                            style={styles.spinningIcon}
-                          />
-                          <Text
-                            style={[
-                              styles.modalButtonText,
-                              { color: '#ffffff', marginLeft: 6 },
-                            ]}
-                          >
-                            Uploading...
-                          </Text>
-                        </>
-                      ) : (
-                        <Text
-                          style={[styles.modalButtonText, { color: '#ffffff' }]}
-                        >
-                          Upload & Save
-                        </Text>
-                      )}
+                      <Text style={[styles.modalButtonText, { color: subtextColor }]}>Close</Text>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>

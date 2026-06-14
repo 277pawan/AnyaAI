@@ -226,54 +226,15 @@ class AnyaServiceModule(private val reactContext: ReactApplicationContext)
     }
 
     @ReactMethod
-    fun showNotification(title: String, body: String, url: String?) {
+    fun showNotification(title: String, body: String, url: String?, imageUrl: String?) {
         try {
-            val notificationManager = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val notificationId = (title.hashCode() + body.hashCode()).absoluteValue
-
-            // Intent to open Main Launcher Activity when user taps notification
-            val intent = Intent(reactContext, com.anyaai.MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                if (!url.isNullOrEmpty()) {
-                    data = android.net.Uri.parse(url)
-                }
-            }
-            val pendingIntent = PendingIntent.getActivity(
-                reactContext,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            com.anyaai.service.AnyaNotificationHelper.show(
+                context = reactContext,
+                title = title,
+                body = body,
+                imageUrl = imageUrl,
+                linkUrl = url,
             )
-
-            // Dynamic lookup of the custom small notification icon
-            val iconResId = reactContext.resources.getIdentifier("ic_anya_notif", "drawable", reactContext.packageName)
-            val finalIconResId = if (iconResId != 0) iconResId else android.R.drawable.ic_dialog_info
-
-            val builder = NotificationCompat.Builder(reactContext, "default_notification_channel")
-                .setSmallIcon(finalIconResId)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-
-            if (!url.isNullOrEmpty()) {
-                val actionIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                val actionPendingIntent = PendingIntent.getActivity(
-                    reactContext,
-                    1,
-                    actionIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                builder.addAction(
-                    android.R.drawable.ic_menu_view,
-                    "Open Link",
-                    actionPendingIntent
-                )
-            }
-
-            notificationManager.notify(notificationId, builder.build())
         } catch (e: Exception) {
             android.util.Log.e("AnyaService", "Failed to show notification: ${e.message}")
         }

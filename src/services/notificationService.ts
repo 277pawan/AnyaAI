@@ -71,12 +71,19 @@ export const NotificationService = {
         body: remoteMessage.notification?.body,
         data: remoteMessage.data,
       }));
-      const title = remoteMessage.notification?.title || 'Anya Update';
-      const body = remoteMessage.notification?.body || '';
+      const title =
+        remoteMessage.data?.title ||
+        remoteMessage.notification?.title ||
+        'Anya Update';
+      const body =
+        remoteMessage.data?.body ||
+        remoteMessage.notification?.body ||
+        '';
       const url = remoteMessage.data?.url || null;
+      const imageUrl = remoteMessage.data?.image_url || null;
       const { AnyaService } = NativeModules;
       if (AnyaService && typeof AnyaService.showNotification === 'function') {
-        AnyaService.showNotification(title, body, url);
+        AnyaService.showNotification(title, body, url, imageUrl);
       }
     });
 

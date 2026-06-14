@@ -652,8 +652,8 @@ const WebViewVoiceAssistant: React.FC<WebViewVoiceAssistantProps> = ({
 
   const toggleListening = useCallback(() => {
     if (speakingAudio || isAnyaSpeaking) {
+      // Stop speech only — do not start listening (that was clearing the response modal)
       onAudioPlaybackStateChange?.('finished');
-      startListening();
       return;
     }
     if (isListeningRef.current) stopListening();

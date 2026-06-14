@@ -20,7 +20,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import { CONFIG } from '../config/index';
 import { ThemeContext } from '../../App';
 
-import { HistoryAPI, ChatAPI } from '../services/api';
+import { HistoryAPI, ChatAPI, NudgeAPI, ReportAPI } from '../services/api';
 
 const formatToIST = (dateInput: string | Date | null | undefined): string => {
   if (!dateInput) return 'Just now';
@@ -72,8 +72,10 @@ const HistoryScreen: React.FC = () => {
         json = await ChatAPI.listSessions();
       } else if (tab === 'leads') {
         json = await HistoryAPI.getLeadHistory();
-      } else if (tab === 'notifications') {
-        json = await HistoryAPI.getNotifications();
+      } else if (tab === 'nudges') {
+        json = await NudgeAPI.list();
+      } else if (tab === 'reports') {
+        json = await ReportAPI.getWeeklyReports();
       }
 
       if (json && json.success && json.data) {
@@ -102,7 +104,8 @@ const HistoryScreen: React.FC = () => {
     { id: 'mcp-calls', label: 'MCP Tools' },
     { id: 'ai-calls', label: 'AI Chats' },
     { id: 'leads', label: 'Leads' },
-    { id: 'notifications', label: 'Alerts' },
+    { id: 'nudges', label: 'Nudges' },
+    { id: 'reports', label: '📊 Weekly' },
   ];
 
   const handleSessionPress = async (item: any) => {
@@ -138,7 +141,86 @@ const HistoryScreen: React.FC = () => {
     Alert.alert('Copied!', 'Details copied to clipboard.');
   };
 
+  // ── Weekly Report Card renderer ───────────────────────────────────────────
+  const CATEGORY_COLORS: Record<string, string> = {
+    health: '#10b981', mind: '#8b5cf6', business: '#f59e0b',
+    tech: '#3b82f6', body: '#ef4444', motivation: '#f97316',
+    innovation: '#06b6d4', reflection: '#6b7280',
+  };
+
+  const renderReportCard = ({ item }: any) => {
+    const data = item.report_data || {};
+    const breakdown: { category: string; total: string }[] = data.breakdown || [];
+    const totalNudges = data.totalNudges || 0;
+    const topCategory = data.topCategory || '—';
+    const weekLabel = item.week_start
+      ? new Date(item.week_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Unknown week';
+    const maxCount = Math.max(...breakdown.map((b: any) => parseInt(b.total, 10)), 1);
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.historyCard,
+          { backgroundColor: cardBackgroundColor, borderColor, borderWidth: 1.5 },
+        ]}
+        onPress={() => {
+          setSelectedQuery(`Week of ${weekLabel}`);
+          setSelectedSessionMessages(null);
+          setSelectedItemDetails(
+            `📊 Total Nudges: ${totalNudges}\n🏆 Top Category: ${topCategory}\n\n` +
+            breakdown.map((b: any) => `  • ${b.category}: ${b.total} nudge(s)`).join('\n')
+          );
+          setModalVisible(true);
+        }}
+        activeOpacity={0.7}
+      >
+        {/* Header */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MaterialCommunityIcon name="chart-bar" color="#8b5cf6" size={18} />
+            <Text style={[styles.historyTitleText, { color: textColor }]}>Week of {weekLabel}</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: '#6b7280' }}>
+            {new Date(item.generated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          </Text>
+        </View>
+
+        {/* Summary pills */}
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          <View style={[styles.reportPill, { backgroundColor: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.3)' }]}>
+            <Text style={{ color: '#8b5cf6', fontSize: 13, fontWeight: '700' }}>{totalNudges} nudges</Text>
+          </View>
+          <View style={[styles.reportPill, { backgroundColor: `rgba(${topCategory === 'tech' ? '59,130,246' : '16,185,129'},0.12)`, borderColor: `rgba(${topCategory === 'tech' ? '59,130,246' : '16,185,129'},0.3)` }]}>
+            <Text style={{ color: CATEGORY_COLORS[topCategory] || '#10b981', fontSize: 13, fontWeight: '700' }}>🏆 {topCategory}</Text>
+          </View>
+        </View>
+
+        {/* Breakdown mini bar chart */}
+        {breakdown.slice(0, 5).map((b: any) => {
+          const count = parseInt(b.total, 10);
+          const pct = Math.min(Math.round((count / maxCount) * 100), 100);
+          const col = CATEGORY_COLORS[b.category] || '#9ca3af';
+          return (
+            <View key={b.category} style={{ marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 11, color: subtextColor, textTransform: 'capitalize' }}>{b.category}</Text>
+                <Text style={{ fontSize: 11, color: col, fontWeight: '700' }}>{b.total}</Text>
+              </View>
+              {/* Bar: flex-based instead of percentage string (Android-safe) */}
+              <View style={{ flexDirection: 'row', height: 4, borderRadius: 4, backgroundColor: isDarkMode ? '#2a2a2a' : '#e5e7eb', overflow: 'hidden' }}>
+                <View style={{ flex: pct, backgroundColor: col }} />
+                <View style={{ flex: 100 - pct }} />
+              </View>
+            </View>
+          );
+        })}
+      </TouchableOpacity>
+    );
+  };
+
   const renderHistoryItem = ({ item }: any) => {
+    if (activeTab === 'reports') return renderReportCard({ item });
     let icon = 'history';
     let color = '#9ca3af';
     let title = '';
@@ -168,12 +250,12 @@ const HistoryScreen: React.FC = () => {
       title = item.query || 'Lead Query';
       subtitle = item.results ? `${item.result_count || 0} qualified jobs matches found` : 'Searching...';
       statusText = 'Complete';
-    } else if (activeTab === 'notifications') {
-      icon = 'bell-ring-outline';
+    } else if (activeTab === 'nudges') {
+      icon = 'lightbulb-on-outline';
       color = '#f59e0b';
-      title = item.title || 'Notification';
-      subtitle = item.body || '';
-      statusText = item.read ? 'Read' : 'New';
+      title = item.category ? `Nudge: ${item.category}` : 'Anya Nudge';
+      subtitle = item.message || '';
+      statusText = item.engaged ? 'Engaged' : 'Sent';
     }
 
     return (
@@ -427,6 +509,13 @@ const styles = StyleSheet.create({
   statusIndicator: { fontSize: 12, fontWeight: '700' },
 
   emptyText: { textAlign: 'center', marginTop: 40, fontSize: 15, fontStyle: 'italic' },
+
+  reportPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
 
   modalOverlay: {
     flex: 1,

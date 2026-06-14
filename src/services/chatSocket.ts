@@ -3,6 +3,7 @@
 // Handles session creation, streaming chunks, and reconnection
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 import { CONFIG } from '../config/index';
 
 const USER_ID = '89968338-6678-48e0-be01-f8472e550e1d';
@@ -13,6 +14,7 @@ export interface ChatCallbacks {
   onDone: (fullText: string, latency: number) => void;
   onError: (msg: string) => void;
   onConnected: (sessionId: string) => void;
+  onDisconnected?: () => void;
   onBackgroundResult: (text: string) => void;
   onNotification?: (title: string, body: string, data: any) => void;
 }
@@ -116,7 +118,6 @@ class AnyaChatSocket {
             case 'notification':
               // Emit global event emitter notification so that any active screen or App.tsx receives it!
               try {
-                const { DeviceEventEmitter } = require('react-native');
                 DeviceEventEmitter.emit('anya-notification', {
                   title: msg.title || 'Anya Alert',
                   body: msg.body || msg.text || '',
@@ -133,18 +134,29 @@ class AnyaChatSocket {
                 msg
               );
               break;
+            case 'background_log':
+              try {
+                DeviceEventEmitter.emit('anya-background-log', {
+                  message: msg.message,
+                  taskType: msg.taskType,
+                  timestamp: msg.timestamp || new Date().toISOString(),
+                });
+              } catch (ee) {
+                console.log('[AnyaChat] Failed to emit background log:', ee);
+              }
+              break;
             case 'error':
               this.callbacks?.onError(msg.message || 'Unknown error');
               break;
           }
         } catch (e) {
-          console.warn('[AnyaChat] Bad message:', event.data);
+          console.log('[AnyaChat] Bad message:', event.data);
         }
       };
 
       this.ws.onerror = (e) => {
         this.isConnecting = false;
-        console.warn('[AnyaChat] WS error:', e);
+        console.log('[AnyaChat] WS error:', e);
         this.callbacks?.onError('Connection error. Reconnecting...');
         this.scheduleReconnect();
       };
@@ -152,11 +164,12 @@ class AnyaChatSocket {
       this.ws.onclose = (e) => {
         this.isConnecting = false;
         console.log('[AnyaChat] WS closed:', e.code, e.reason);
+        this.callbacks?.onDisconnected?.();
         if (e.code !== 1000) this.scheduleReconnect();
       };
     } catch (err: any) {
       this.isConnecting = false;
-      console.warn('[AnyaChat] Connection failed:', err);
+      console.log('[AnyaChat] Connection failed:', err);
       this.callbacks?.onError(`Server unreachable: ${err.message}`);
       this.scheduleReconnect();
     }

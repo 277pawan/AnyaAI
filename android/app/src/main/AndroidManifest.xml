@@ -65,6 +65,15 @@
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
+        <!-- Rich FCM notifications: full text + image without clipping -->
+        <service
+            android:name=".service.AnyaFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- ── Quick Settings Tile ────────────────────────────────────── -->
         <!--
             Adds an "Anya AI" toggle to the Quick Settings panel

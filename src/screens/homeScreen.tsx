@@ -25,6 +25,7 @@ import {
   NativeModules,
   AppState,
   ActivityIndicator,
+  DeviceEventEmitter,
 } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import WebViewVoiceAssistant from './components/micWaves/micVisualizer';
@@ -69,6 +70,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [liveTranscript, setLiveTranscript] = useState('');
 
   const [aiResponse, setAiResponse] = useState('');
+  const [isResponseVisible, setIsResponseVisible] = useState(false);
+  const [isResponseExpanded, setIsResponseExpanded] = useState(true);
   const [isAnyaThinking, setIsAnyaThinking] = useState(false);
   const [isAnyaSpeaking, setIsAnyaSpeaking] = useState(false);
   const [speakingAudio, setSpeakingAudio] = useState<string | null>(null);
@@ -77,6 +80,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const sentenceBufferRef = useRef('');
   const isNewResponseRef = useRef(true); // tracks whether next chunk starts a brand-new response
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null); // cancel guard
+  const isAnyaSpeakingRef = useRef(false);
+  const backgroundTaskActiveRef = useRef(false);
+  const skipVoiceRef = useRef(false);
+  const voiceReaderEnabledRef = useRef(true);
+  const bgVoiceReaderEnabledRef = useRef(false);
+  const [voiceReaderEnabled, setVoiceReaderEnabled] = useState(true);
+  const [bgVoiceReaderEnabled, setBgVoiceReaderEnabled] = useState(false);
 
   // 🔔 Wake-word states — "Hi Anya" detection (Siri-like)
   const [wakeWordActive, setWakeWordActive] = useState(false); // true = Anya just heard "Hi Anya"
@@ -88,33 +98,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [currentDecibel, setCurrentDecibel] = useState(-160);
   const [bgProgressStep, setBgProgressStep] = useState(0);
 
+  const [backgroundLogs, setBackgroundLogs] = useState<
+    { message: string; timestamp: string }[]
+  >([]);
+  const [isConsoleVisible, setIsConsoleVisible] = useState(false);
+
   useEffect(() => {
-    if (!backgroundTaskStatus) {
-      setBgProgressStep(0);
-      return;
-    }
-    const steps = [
-      'Anya is initiating search...',
-      'Anya is crawling web boards...',
-      'Anya is filtering job postings...',
-      'Anya is reading descriptions...',
-      'Anya is comparing with skills...',
-      'Anya is matching expected CTC...',
-      'Anya is compiling the best fit...',
-      'Anya is preparing response...',
-    ];
-    const interval = setInterval(() => {
-      setBgProgressStep(prev => {
-        const next = prev + 1;
-        if (next < steps.length) {
-          setBackgroundTaskStatus(steps[next]);
-          return next;
-        }
-        return prev;
-      });
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [backgroundTaskStatus]);
+    const sub = DeviceEventEmitter.addListener('anya-background-log', (log: any) => {
+      setBackgroundLogs(prev => [...prev, log].slice(-100));
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Clear stale "initiating search" pill when no logs arrive
+  useEffect(() => {
+    if (!backgroundTaskStatus && backgroundLogs.length === 0) return;
+    const timer = setTimeout(() => {
+      console.log('[Home] Background task timed out locally due to inactivity.');
+      backgroundTaskActiveRef.current = false;
+      setBackgroundTaskStatus(null);
+    }, 120_000);
+    return () => clearTimeout(timer);
+  }, [backgroundTaskStatus, backgroundLogs]);
 
   // Active In-App Real-time Push Notification Banner State
   // Notification state removed — real FCM system tray handles all push notifications
@@ -273,16 +278,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   }, []);
 
-  // Reload TTS settings whenever screen is focused
-  useEffect(() => {
-    if (!navigation) return;
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('[Home] Screen focused, reloading TTS settings...');
-      loadTtsSettings();
-    });
-    return unsubscribe;
-  }, [navigation, loadTtsSettings]);
-
   // 📞 Fetch actual device contacts on mount with Android Permissions
   useEffect(() => {
     const requestContactsPermission = async () => {
@@ -408,19 +403,110 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   }, []);
 
+  useEffect(() => {
+    isAnyaSpeakingRef.current = isAnyaSpeaking;
+  }, [isAnyaSpeaking]);
+
+  const stopSpeechOnly = useCallback(() => {
+    try {
+      Tts.stop();
+    } catch (_) {}
+    setSpeakingAudio(null);
+    setIsAnyaSpeaking(false);
+  }, []);
+
+  const minimizeResponseCard = useCallback(() => {
+    skipVoiceRef.current = true;
+    stopSpeechOnly();
+    setIsResponseExpanded(false);
+  }, [stopSpeechOnly]);
+
+  const expandResponseCard = useCallback(() => {
+    setIsResponseExpanded(true);
+    setIsResponseVisible(true);
+  }, []);
+
+  const skipResponseVoice = useCallback(() => {
+    skipVoiceRef.current = true;
+    if (thinkingTimeoutRef.current) {
+      clearTimeout(thinkingTimeoutRef.current);
+      thinkingTimeoutRef.current = null;
+    }
+    setIsAnyaThinking(false);
+    setIsProcessing(false);
+    stopSpeechOnly();
+    setIsResponseVisible(false);
+    // Never cancel background workers — they keep running on the server
+    if (!backgroundTaskActiveRef.current) {
+      anyaChat.sendCancel();
+    }
+  }, [stopSpeechOnly]);
+
+  const loadVoiceReaderPrefs = useCallback(async () => {
+    try {
+      const voice = await AsyncStorage.getItem('@anya_voice_reader_enabled');
+      const bg = await AsyncStorage.getItem('@anya_bg_voice_reader_enabled');
+      const voiceOn = voice === null ? true : voice === 'true';
+      const bgOn = bg === null ? false : bg === 'true';
+      voiceReaderEnabledRef.current = voiceOn;
+      bgVoiceReaderEnabledRef.current = bgOn;
+      setVoiceReaderEnabled(voiceOn);
+      setBgVoiceReaderEnabled(bgOn);
+    } catch (e) {
+      console.warn('[Home] Failed to load voice reader prefs:', e);
+    }
+  }, []);
+
+  const shouldSpeakResponse = useCallback((isBackground: boolean) => {
+    if (skipVoiceRef.current) return false;
+    return isBackground
+      ? bgVoiceReaderEnabledRef.current
+      : voiceReaderEnabledRef.current;
+  }, []);
+
+  const toggleVoiceReader = useCallback(
+    async (forBackground?: boolean) => {
+      const isBg =
+        forBackground ??
+        (backgroundTaskActiveRef.current || !!backgroundTaskStatus);
+      if (isBg) {
+        const next = !bgVoiceReaderEnabledRef.current;
+        bgVoiceReaderEnabledRef.current = next;
+        setBgVoiceReaderEnabled(next);
+        await AsyncStorage.setItem('@anya_bg_voice_reader_enabled', String(next));
+        if (!next) stopSpeechOnly();
+      } else {
+        const next = !voiceReaderEnabledRef.current;
+        voiceReaderEnabledRef.current = next;
+        setVoiceReaderEnabled(next);
+        await AsyncStorage.setItem('@anya_voice_reader_enabled', String(next));
+        if (!next) stopSpeechOnly();
+      }
+    },
+    [backgroundTaskStatus, stopSpeechOnly],
+  );
+
+  // Reload TTS + voice reader prefs whenever screen is focused
+  useEffect(() => {
+    loadVoiceReaderPrefs();
+    if (!navigation) return;
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('[Home] Screen focused, reloading TTS settings...');
+      loadTtsSettings();
+      loadVoiceReaderPrefs();
+    });
+    return unsubscribe;
+  }, [navigation, loadTtsSettings, loadVoiceReaderPrefs]);
+
   const handleAudioPlaybackStateChange = useCallback(
     (state: 'speaking' | 'finished' | 'error') => {
       if (state === 'speaking') {
         setIsAnyaSpeaking(true);
       } else if (state === 'finished' || state === 'error') {
-        setIsAnyaSpeaking(false);
-        setSpeakingAudio(null);
-        try {
-          Tts.stop();
-        } catch (e) {}
+        stopSpeechOnly();
       }
     },
-    [],
+    [stopSpeechOnly],
   );
 
   // 🔌 Connect WebSocket + Init TTS on mount
@@ -443,6 +529,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         console.log('[Home] WS connected, session:', sid);
         setWsConnected(true);
       },
+      onDisconnected: () => {
+        console.warn('[Home] WS disconnected — will auto-reconnect');
+        setWsConnected(false);
+      },
       onChunk: text => {
         if (isNewResponseRef.current) {
           // First chunk of a new response — reset the display cleanly
@@ -455,9 +545,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         fullResponseRef.current += text;
         setAiResponse(fullResponseRef.current);
+        setIsResponseVisible(true);
+        setIsResponseExpanded(true);
+
+        sentenceBufferRef.current += text;
+        if (!shouldSpeakResponse(backgroundTaskActiveRef.current)) {
+          return;
+        }
 
         // Queue sentence fragments dynamically for zero latency voice feedback!
-        sentenceBufferRef.current += text;
         const sentenceBoundaryRegex = /([^.!?\n]+[.!?\n]+)/g;
         let match;
         const sentencesToSpeak: string[] = [];
@@ -497,11 +593,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         setIsAnyaThinking(false);
         setIsProcessing(false);
-        setBackgroundTaskStatus(null);
+        if (!backgroundTaskActiveRef.current) {
+          setBackgroundTaskStatus(null);
+        }
 
-        // Speak the remaining text segment in the buffer
+        // Speak the remaining text segment in the buffer (unless user skipped or bg task ack)
         const remainingText = sentenceBufferRef.current.trim();
-        if (remainingText.length > 0) {
+        if (
+          remainingText.length > 0 &&
+          shouldSpeakResponse(backgroundTaskActiveRef.current)
+        ) {
           console.log(
             '[TTS Streaming] Speaking final remainder segment:',
             remainingText,
@@ -531,13 +632,34 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         setIsAnyaThinking(false);
         setIsProcessing(false);
-        setBackgroundTaskStatus(null);
+        if (!backgroundTaskActiveRef.current) {
+          setBackgroundTaskStatus(null);
+        }
       },
       onBackgroundResult: async text => {
-        setAiResponse(prev => prev + '\n\n' + text);
+        backgroundTaskActiveRef.current = false;
+        setAiResponse(prev => (prev ? prev + '\n\n' + text : text));
+        setIsResponseVisible(true);
+        setIsResponseExpanded(true);
         setBackgroundTaskStatus(null);
-        setIsAnyaSpeaking(true); // Prevent state gap before synthesis starts
-        // Use the local TTS engine so Anya consistently speaks in the voice selected in Settings!
+        backgroundTaskActiveRef.current = false;
+        setBackgroundLogs([]);
+
+        const { AnyaService } = NativeModules;
+        if (AnyaService && typeof AnyaService.showNotification === 'function') {
+          AnyaService.showNotification(
+            'Anya — Job Search Complete',
+            text,
+            null,
+            null,
+          );
+        }
+
+        if (!shouldSpeakResponse(true)) {
+          return;
+        }
+
+        setIsAnyaSpeaking(true);
         try {
           await loadTtsSettings();
           Tts.speak(text);
@@ -550,7 +672,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         console.log('[Home] FCM nudge forwarded to system tray:', title, body);
         const { AnyaService } = NativeModules;
         if (AnyaService && typeof AnyaService.showNotification === 'function') {
-          AnyaService.showNotification(title, body);
+          AnyaService.showNotification(title, body, null, null);
         }
       },
     });
@@ -564,7 +686,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setSpeakingAudio(null);
       setIsAnyaSpeaking(false);
     };
-  }, [loadTtsSettings]);
+  }, [loadTtsSettings, shouldSpeakResponse]);
 
   const syncContactsManually = async () => {
     try {
@@ -692,12 +814,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setIsAssistantActive(true);
     setIsProcessing(false);
     setLiveTranscript('');
-    setAiResponse(''); // Clear previous response immediately when listening starts!
-    try {
-      Tts.stop();
-    } catch (e) {}
-    setSpeakingAudio(null);
-    setIsAnyaSpeaking(false);
+    // Keep the response card visible while Anya is speaking or a background task is running
+    if (!isAnyaSpeakingRef.current && !backgroundTaskActiveRef.current) {
+      setAiResponse('');
+      setIsResponseVisible(false);
+    }
+    if (isAnyaSpeakingRef.current) {
+      stopSpeechOnly();
+    }
     console.log('🎙️ Started Listening');
   };
 
@@ -808,9 +932,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
 
     // REMOTE: Send everything else to Anya AI via WebSocket
+    skipVoiceRef.current = false;
     setIsProcessing(true);
     setIsAnyaThinking(true);
     setAiResponse('');
+    setIsResponseVisible(false);
+    setIsResponseExpanded(true);
     isNewResponseRef.current = true; // next onChunk starts a fresh response
     fullResponseRef.current = '';
     sentenceBufferRef.current = '';
@@ -833,6 +960,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       normalizedText.includes('lead');
 
     if (isSearchTask) {
+      backgroundTaskActiveRef.current = true;
       setBackgroundTaskStatus('Anya is initiating search...');
     }
 
@@ -868,14 +996,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (thinkingTimeoutRef.current)
           clearTimeout(thinkingTimeoutRef.current);
         thinkingTimeoutRef.current = setTimeout(() => {
-          console.warn('[Home] Response timeout — cancelling request');
+          console.warn('[Home] Response timeout');
           setIsAnyaThinking(false);
           setIsProcessing(false);
+          thinkingTimeoutRef.current = null;
+          if (backgroundTaskActiveRef.current) {
+            setBackgroundTaskStatus('Background task still running…');
+            return;
+          }
           setBackgroundTaskStatus(null);
           setAiResponse(
             '⚠️ Anya took too long to respond. Check your Wi-Fi connection and make sure the backend server is running.',
           );
-          thinkingTimeoutRef.current = null;
+          setIsResponseVisible(true);
         }, 30_000);
       }
     };
@@ -1136,14 +1269,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Directory Shortcut Trigger Button */}
-        <TouchableOpacity
-          style={[
-            styles.directoryShortcutBtn,
-            { backgroundColor: cardBgColor, borderColor },
-          ]}
-          onPress={() => setIsDirectoryVisible(!isDirectoryVisible)}
-        >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={[
+              styles.directoryShortcutBtn,
+              {
+                backgroundColor: cardBgColor,
+                borderColor,
+                paddingHorizontal: 10,
+              },
+            ]}
+            onPress={() => toggleVoiceReader(!!backgroundTaskStatus)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialCommunityIcon
+              name={
+                (backgroundTaskStatus ? bgVoiceReaderEnabled : voiceReaderEnabled)
+                  ? 'volume-high'
+                  : 'volume-off'
+              }
+              size={20}
+              color={
+                (backgroundTaskStatus ? bgVoiceReaderEnabled : voiceReaderEnabled)
+                  ? '#8b5cf6'
+                  : subtextColor
+              }
+            />
+          </TouchableOpacity>
+
+          {/* Directory Shortcut Trigger Button */}
+          <TouchableOpacity
+            style={[
+              styles.directoryShortcutBtn,
+              { backgroundColor: cardBgColor, borderColor },
+            ]}
+            onPress={() => setIsDirectoryVisible(!isDirectoryVisible)}
+          >
           <MaterialCommunityIcon
             name="contacts-outline"
             size={20}
@@ -1153,28 +1314,44 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             Contacts
           </Text>
         </TouchableOpacity>
+        </View>
       </View>
 
-      {backgroundTaskStatus && (
-        <View style={styles.backgroundTaskPill}>
+      {(backgroundLogs.length > 0 ||
+        (backgroundTaskStatus && (isAnyaThinking || isProcessing))) && (
+        <TouchableOpacity
+          onPress={() => setIsConsoleVisible(true)}
+          style={[styles.backgroundTaskPill, { flexDirection: 'row', alignItems: 'center' }]}
+          activeOpacity={0.8}
+        >
           <ActivityIndicator
             size="small"
             color="#3b82f6"
-            style={{ marginRight: 4 }}
+            style={{ marginRight: 6 }}
           />
-          <Text style={styles.backgroundTaskText}>{backgroundTaskStatus}</Text>
+          <Text style={styles.backgroundTaskText} numberOfLines={1}>
+            ⚙️{' '}
+            {backgroundLogs.length > 0
+              ? backgroundLogs[backgroundLogs.length - 1].message
+              : backgroundTaskStatus}
+          </Text>
           <TouchableOpacity
-            onPress={() => setBackgroundTaskStatus(null)}
+            onPress={() => {
+              setBackgroundLogs([]);
+              if (!backgroundTaskActiveRef.current) {
+                setBackgroundTaskStatus(null);
+              }
+            }}
             style={{ marginLeft: 8, paddingHorizontal: 4 }}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcon
               name="close-circle"
               size={16}
-              color="rgba(255,255,255,0.5)"
+              color="#ef4444"
             />
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* Center visualizer - Starry Orb Constellation */}
@@ -1428,7 +1605,268 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       )}
 
-      {/* ─── Bottom Section: Live Transcript + AI Response ─── */}
+      {/* Floating sliding Background Task Console Drawer */}
+      {isConsoleVisible && (
+        <View
+          style={[
+            styles.directoryDrawer,
+            { backgroundColor: '#0d0e15', borderTopColor: '#2563eb' },
+          ]}
+        >
+          <View style={styles.directoryDrawerHeader}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', flexShrink: 0 }} />
+                <Text style={[styles.drawerTitle, { color: '#ffffff' }]} numberOfLines={1}>
+                  Anya Background Stream
+                </Text>
+              </View>
+              <Text style={[styles.drawerSubtitle, { color: '#9ca3af' }]} numberOfLines={1}>
+                Live rolling log output from active background agents
+              </Text>
+            </View>
+            <View style={styles.drawerActionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.drawerAddBtn,
+                  { backgroundColor: 'rgba(239, 68, 68, 0.15)' },
+                ]}
+                onPress={() => setBackgroundLogs([])}
+              >
+                <MaterialCommunityIcon name="delete" size={16} color="#ef4444" />
+                <Text style={[styles.drawerAddText, { color: '#ef4444' }]}>
+                  Clear
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.drawerAddBtn,
+                  { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                ]}
+                onPress={() => setIsConsoleVisible(false)}
+              >
+                <MaterialCommunityIcon name="close" size={16} color="#3b82f6" />
+                <Text style={[styles.drawerAddText, { color: '#3b82f6' }]}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView
+            style={{
+              flex: 1,
+              backgroundColor: '#05060b',
+              borderRadius: 12,
+              padding: 10,
+              borderWidth: 1,
+              borderColor: '#1e293b',
+            }}
+            ref={(ref) => {
+              ref?.scrollToEnd({ animated: true });
+            }}
+            showsVerticalScrollIndicator={true}
+          >
+            {backgroundLogs.length === 0 ? (
+              <Text style={{ color: '#4b5563', fontFamily: 'monospace', fontSize: 12, textAlign: 'center', marginTop: 40 }}>
+                No active background logs. Run a search task to see live streams.
+              </Text>
+            ) : (
+              backgroundLogs.map((log, index) => {
+                const logTime = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                return (
+                  <View key={index} style={{ marginBottom: 6, flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <Text style={{ color: '#3b82f6', fontFamily: 'monospace', fontSize: 11, marginRight: 6 }}>
+                      [{logTime}]
+                    </Text>
+                    <Text style={{ color: '#f3f4f6', fontFamily: 'monospace', fontSize: 11, flex: 1, lineHeight: 16 }}>
+                      {log.message}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Floating response overlay — does NOT shrink the mic visualizer */}
+      {(isAnyaThinking || (isResponseVisible && aiResponse)) && !isConsoleVisible && (
+        <View style={styles.responseOverlay}>
+          {isAnyaThinking && (
+            <View
+              pointerEvents="auto"
+              style={[
+                styles.thinkingBar,
+                {
+                  backgroundColor: isDarkMode
+                    ? 'rgba(139,92,246,0.12)'
+                    : 'rgba(139,92,246,0.08)',
+                  borderColor: 'rgba(139,92,246,0.3)',
+                },
+              ]}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  flexShrink: 1,
+                }}
+              >
+                <MaterialCommunityIcon name="brain" size={14} color="#8b5cf6" />
+                <Text
+                  style={[styles.liveTranscriptText, { color: '#8b5cf6' }]}
+                  numberOfLines={1}
+                >
+                  {backgroundTaskStatus
+                    ? 'Background task starting…'
+                    : 'Anya is thinking...'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                id="skip-thinking-btn"
+                onPress={skipResponseVoice}
+                style={{
+                  backgroundColor: 'rgba(139,92,246,0.25)',
+                  borderRadius: 10,
+                  padding: 4,
+                  paddingHorizontal: 10,
+                  flexShrink: 0,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcon name="volume-off" size={13} color="#8b5cf6" />
+                <Text style={{ color: '#8b5cf6', fontSize: 11, fontWeight: '700' }}>
+                  Skip
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isResponseVisible && aiResponse ? (
+            <View
+              pointerEvents="auto"
+              style={[
+                styles.aiResponseCard,
+                !isResponseExpanded && styles.aiResponseCardMinimized,
+                { backgroundColor: cardBgColor, borderColor },
+              ]}
+            >
+              <View style={styles.aiResponseHeader}>
+                <View style={styles.aiResponseHeaderLeft}>
+                  <MaterialCommunityIcon
+                    name="robot-outline"
+                    size={16}
+                    color={isAnyaSpeaking ? '#8b5cf6' : '#3b82f6'}
+                  />
+                  <Text
+                    style={[
+                      styles.aiResponseLabel,
+                      { color: isAnyaSpeaking ? '#8b5cf6' : '#3b82f6' },
+                    ]}
+                  >
+                    {backgroundTaskStatus
+                      ? '⚙️ Running in background'
+                      : isAnyaSpeaking
+                      ? '🔊 Anya is speaking...'
+                      : 'Anya'}
+                  </Text>
+                </View>
+                <View
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                >
+                  <TouchableOpacity
+                    onPress={() => toggleVoiceReader(!!backgroundTaskStatus)}
+                    style={styles.copyBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialCommunityIcon
+                      name={
+                        (backgroundTaskStatus
+                          ? bgVoiceReaderEnabled
+                          : voiceReaderEnabled)
+                          ? 'volume-high'
+                          : 'volume-off'
+                      }
+                      size={16}
+                      color={
+                        (backgroundTaskStatus
+                          ? bgVoiceReaderEnabled
+                          : voiceReaderEnabled)
+                          ? '#8b5cf6'
+                          : subtextColor
+                      }
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Clipboard.setString(aiResponse);
+                      Alert.alert('Copied!', 'Response copied to clipboard.');
+                    }}
+                    style={styles.copyBtn}
+                  >
+                    <MaterialCommunityIcon
+                      name="content-copy"
+                      size={15}
+                      color={subtextColor}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={
+                      isResponseExpanded
+                        ? minimizeResponseCard
+                        : expandResponseCard
+                    }
+                    style={styles.closeBtn}
+                    hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
+                  >
+                    <MaterialCommunityIcon
+                      name={isResponseExpanded ? 'chevron-down' : 'chevron-up'}
+                      size={22}
+                      color={subtextColor}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={skipResponseVoice}
+                    style={styles.closeBtn}
+                    hitSlop={{ top: 14, bottom: 14, left: 8, right: 14 }}
+                  >
+                    <MaterialCommunityIcon
+                      name="close"
+                      size={20}
+                      color={subtextColor}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {isResponseExpanded ? (
+                <ScrollView
+                  style={styles.aiResponseScroll}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                >
+                  <Text style={[styles.aiResponseText, { color: textColor }]}>
+                    {aiResponse}
+                  </Text>
+                </ScrollView>
+              ) : (
+                <Text
+                  style={[styles.aiResponsePreview, { color: subtextColor }]}
+                  numberOfLines={1}
+                >
+                  {aiResponse}
+                </Text>
+              )}
+            </View>
+          ) : null}
+        </View>
+      )}
+
+      {/* ─── Bottom Section: Live Transcript + Chat Input ─── */}
       <View style={styles.chatPreviewContainer}>
         {/* Live transcript — what user is currently saying */}
         {isAssistantActive && liveTranscript ? (
@@ -1460,142 +1898,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </View>
         ) : null}
 
-        {/* Anya thinking indicator with Cancel button */}
-        {isAnyaThinking && (
-          <View
-            style={[
-              styles.thinkingBar,
-              {
-                backgroundColor: isDarkMode
-                  ? 'rgba(139,92,246,0.12)'
-                  : 'rgba(139,92,246,0.08)',
-                borderColor: 'rgba(139,92,246,0.3)',
-              },
-            ]}
-          >
-            {/* Left: brain icon + label */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                flexShrink: 1,
-              }}
-            >
-              <MaterialCommunityIcon name="brain" size={14} color="#8b5cf6" />
-              <Text
-                style={[styles.liveTranscriptText, { color: '#8b5cf6' }]}
-                numberOfLines={1}
-              >
-                Anya is thinking...
-              </Text>
-            </View>
-            {/* Right: cancel ✕ */}
-            <TouchableOpacity
-              id="cancel-thinking-btn"
-              onPress={() => {
-                if (thinkingTimeoutRef.current) {
-                  clearTimeout(thinkingTimeoutRef.current);
-                  thinkingTimeoutRef.current = null;
-                }
-                setIsAnyaThinking(false);
-                setIsProcessing(false);
-                setBackgroundTaskStatus(null);
-                try {
-                  Tts.stop();
-                } catch (_) {}
-                anyaChat.sendCancel();
-              }}
-              style={{
-                backgroundColor: 'rgba(139,92,246,0.25)',
-                borderRadius: 10,
-                padding: 4,
-                paddingHorizontal: 8,
-                flexShrink: 0,
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <MaterialCommunityIcon name="close" size={13} color="#8b5cf6" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Streaming AI response bubble */}
-        {aiResponse && (
-          <View
-            style={[
-              styles.aiResponseCard,
-              { backgroundColor: cardBgColor, borderColor },
-            ]}
-          >
-            {/* Header row */}
-            <View style={styles.aiResponseHeader}>
-              <View style={styles.aiResponseHeaderLeft}>
-                <MaterialCommunityIcon
-                  name="robot-outline"
-                  size={16}
-                  color={isAnyaSpeaking ? '#8b5cf6' : '#3b82f6'}
-                />
-                <Text
-                  style={[
-                    styles.aiResponseLabel,
-                    { color: isAnyaSpeaking ? '#8b5cf6' : '#3b82f6' },
-                  ]}
-                >
-                  {isAnyaSpeaking ? '🔊 Anya is speaking...' : 'Anya'}
-                </Text>
-              </View>
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
-              >
-                <TouchableOpacity
-                  onPress={() => {
-                    Clipboard.setString(aiResponse);
-                    Alert.alert('Copied!', 'Response copied to clipboard.');
-                  }}
-                  style={styles.copyBtn}
-                >
-                  <MaterialCommunityIcon
-                    name="content-copy"
-                    size={15}
-                    color={subtextColor}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setAiResponse('');
-                    try {
-                      Tts.stop();
-                    } catch (e) {}
-                    setSpeakingAudio(null);
-                    setIsAnyaSpeaking(false);
-                    setIsAnyaThinking(false);
-                    setIsProcessing(false);
-                    setBackgroundTaskStatus(null);
-                    anyaChat.sendCancel();
-                  }}
-                  style={styles.closeBtn}
-                >
-                  <MaterialCommunityIcon
-                    name="close"
-                    size={18}
-                    color={subtextColor}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {/* Scrollable response text */}
-            <ScrollView
-              style={styles.aiResponseScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={[styles.aiResponseText, { color: textColor }]}>
-                {aiResponse}
-              </Text>
-            </ScrollView>
-          </View>
-        )}
-
         {/* Quick Suggestion Chips */}
         <ScrollView
           horizontal
@@ -1613,7 +1915,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               key={chip.label}
               onPress={() => {
-                handleSpeech(chip.prompt);
+                setChatInputText(chip.prompt);
               }}
               style={{
                 paddingHorizontal: 14,
@@ -1816,11 +2118,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  responseOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 130,
+    zIndex: 9999,
+    elevation: 24,
+    gap: 8,
+  },
   chatPreviewContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
     paddingTop: 6,
-    minHeight: 80,
   },
   liveTranscriptBar: {
     flexDirection: 'row',
@@ -1854,7 +2164,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 20,
     padding: 16,
-    maxHeight: 400,
+    maxHeight: 280,
+    elevation: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  aiResponseCardMinimized: {
+    maxHeight: 72,
+    paddingVertical: 12,
+  },
+  aiResponsePreview: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   aiResponseHeader: {
     flexDirection: 'row',

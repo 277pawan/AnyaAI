@@ -57,6 +57,20 @@ export const UserAPI = {
   getPreferences:    ()           => get('/api/user/preferences'),
   updatePreferences: (data: any)  => put('/api/user/preferences', data),
   replaceWorkTypes:  (types: string[]) => put('/api/user/work-types', { workTypes: types }),
+  uploadResume: async (fileUri: string, fileName: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('resume', {
+      uri: fileUri,
+      type: 'application/pdf',
+      name: fileName,
+    } as any);
+    const res = await fetch(`${CONFIG.API_BASE_URL}/api/user/resume/upload`, {
+      method: 'POST',
+      headers: { 'x-user-id': USER_ID }, // no Content-Type — let fetch set multipart boundary
+      body: formData,
+    });
+    return res.json();
+  },
 };
 
 // ─── CHAT ─────────────────────────────────────────────────────────────────────
@@ -93,6 +107,11 @@ export const NudgeAPI = {
   updateCategory:     (name: string, data: any) => put(`/api/nudges/categories/${name}`, data),
   getSchedule:        ()           => get('/api/nudges/schedule'),
   updateScheduleSlot: (slot: string, data: any) => put(`/api/nudges/schedule/${slot}`, data),
+};
+
+// ─── REPORTS ─────────────────────────────────────────────────────────────────
+export const ReportAPI = {
+  getWeeklyReports: () => get('/api/reports/weekly'),
 };
 
 // ─── HISTORY ──────────────────────────────────────────────────────────────────

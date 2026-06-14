@@ -46,6 +46,8 @@ const AnyaSettings = () => {
   const [autoGain, setAutoGain] = useState(true);
   const [echoCancellation, setEchoCancellation] = useState(true);
   const [bluetoothSco, setBluetoothSco] = useState(true);
+  const [voiceReaderEnabled, setVoiceReaderEnabled] = useState(true);
+  const [bgVoiceReaderEnabled, setBgVoiceReaderEnabled] = useState(false);
   const [voiceMode, setVoiceMode] = useState<'earpiece' | 'speaker'>(
     'earpiece',
   );
@@ -77,6 +79,8 @@ const AnyaSettings = () => {
         const bt = await AsyncStorage.getItem('@anya_bluetooth_sco');
         const vm = await AsyncStorage.getItem('@anya_voice_mode');
         const vid = await AsyncStorage.getItem('@anya_selected_voice');
+        const vr = await AsyncStorage.getItem('@anya_voice_reader_enabled');
+        const bvr = await AsyncStorage.getItem('@anya_bg_voice_reader_enabled');
 
         if (ns !== null) setNoiseSuppression(ns === 'true');
         if (ag !== null) setAutoGain(ag === 'true');
@@ -84,6 +88,8 @@ const AnyaSettings = () => {
         if (bt !== null) setBluetoothSco(bt === 'true');
         if (vm !== null) setVoiceMode(vm as 'earpiece' | 'speaker');
         if (vid !== null) setSelectedVoiceId(vid);
+        setVoiceReaderEnabled(vr === null ? true : vr === 'true');
+        setBgVoiceReaderEnabled(bvr === null ? false : bvr === 'true');
       } catch (e) {
         console.warn('[AnyaSettings] load error:', e);
       }
@@ -381,6 +387,29 @@ const AnyaSettings = () => {
             ))}
           </View>
         </View>
+
+        {/* ── Voice Reader ───────────────────────────────────────────────── */}
+        <SectionHeader icon="text-to-speech" title="Voice Reader" />
+        <SettingRow
+          icon="volume-high"
+          title="Read Responses Aloud"
+          desc="Anya speaks normal chat responses (default: on)"
+          value={voiceReaderEnabled}
+          onToggle={v => {
+            setVoiceReaderEnabled(v);
+            save('@anya_voice_reader_enabled', String(v));
+          }}
+        />
+        <SettingRow
+          icon="briefcase-search-outline"
+          title="Background Task Voice"
+          desc="Speak job search & background results (default: off)"
+          value={bgVoiceReaderEnabled}
+          onToggle={v => {
+            setBgVoiceReaderEnabled(v);
+            save('@anya_bg_voice_reader_enabled', String(v));
+          }}
+        />
 
         {/* ── Anya Voice (TTS) ─────────────────────────────────────────── */}
         <SectionHeader icon="account-voice" title="Anya Voice" />
